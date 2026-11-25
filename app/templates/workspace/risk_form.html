@@ -1,0 +1,35 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ ("Edit " ~ risk.code) if risk else "Add a risk" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_risks', project_id=project.id) }}">{{ project.code }} risks</a>{% endblock %}
+{% block page_title %}{{ ("Edit " ~ risk.code) if risk else "Add a risk" }}{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  {% if projects|length > 1 and not risk %}
+  <form method="get" class="mb-3"><label class="form-label" for="project">Project</label>
+    <select class="form-select" id="project" name="project" data-autosubmit>{% for p in projects %}<option value="{{ p.id }}" {{ "selected" if p.id == project.id }}>{{ p.code }} · {{ p.name }}</option>{% endfor %}</select></form>
+  {% endif %}
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}<input type="hidden" name="project" value="{{ project.id }}">
+    {{ field(form.title, hint=form.title.description) }}
+    {{ field(form.description, hint=form.description.description) }}
+    <div class="row g-3">
+      <div class="col-sm-4">{{ field(form.category) }}</div>
+      <div class="col-6 col-sm-4">{{ field(form.likelihood) }}</div>
+      <div class="col-6 col-sm-4">{{ field(form.impact) }}</div>
+    </div>
+    <div class="score-preview" data-score-from="#likelihood,#impact" aria-live="polite"></div>
+    <div class="row g-3">
+      <div class="col-sm-4">{{ field(form.response) }}</div>
+      <div class="col-sm-4">{{ field(form.owner_id) }}</div>
+      <div class="col-sm-4">{{ field(form.review_date) }}</div>
+    </div>
+    {{ field(form.mitigation, hint=form.mitigation.description ~ ". Required for high and critical risks.") }}
+    {{ field(form.contingency, hint=form.contingency.description) }}
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("save") }} Save risk</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.risk', risk_id=risk.id) if risk else url_for('workspace.project_risks', project_id=project.id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

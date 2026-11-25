@@ -1,0 +1,261 @@
+{% macro icon(name, cls="") -%}<i data-lucide="{{ name }}" class="{{ cls }}" aria-hidden="true"></i>{%- endmacro %}
+
+{% macro theme_button() -%}
+<button type="button" class="icon-btn theme-toggle" aria-label="Switch theme">
+  <span class="when-light">{{ icon("moon") }}</span><span class="when-dark">{{ icon("sun") }}</span>
+</button>
+{%- endmacro %}
+
+{% macro field(f, hint=None, autocomplete=None, placeholder=None) -%}
+<div class="mb-3">
+  {{ f.label(class_="form-label") }}
+  {% set cls = "form-select" if f.type == "SelectField" else "form-control" %}
+  {% set cls = cls ~ (" is-invalid" if f.errors else "") %}
+  {% if f.type == "PasswordField" %}
+  <div class="pw-field">
+    {{ f(class_=cls, autocomplete=autocomplete or "current-password", placeholder=placeholder or "") }}
+    <button type="button" class="pw-toggle" aria-label="Show password" aria-pressed="false">{{ icon("eye") }}</button>
+  </div>
+  {% else %}
+  {{ f(class_=cls, autocomplete=autocomplete or "on", placeholder=placeholder or "") }}
+  {% endif %}
+  {% for e in f.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+  {% if hint %}<div class="form-hint">{{ hint }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro check(f) -%}
+<div class="form-check mb-3">
+  {{ f(class_="form-check-input" ~ (" is-invalid" if f.errors else "")) }}
+  {{ f.label(class_="form-check-label") }}
+  {% for e in f.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro sub_chip(sub, org=None) -%}
+{% if org and org.is_suspended %}<span class="chip red"><span class="dot"></span>Suspended</span>
+{% elif not sub %}<span class="chip">No plan</span>
+{% elif sub.status == "trialing" %}<span class="chip blue"><span class="dot"></span>Trial</span>
+{% elif sub.status == "active" %}<span class="chip green"><span class="dot"></span>Active</span>
+{% elif sub.status == "past_due" %}<span class="chip amber"><span class="dot"></span>Past due</span>
+{% else %}<span class="chip">{{ sub.status|replace("_", " ")|capitalize }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro meter(u) -%}
+<div class="usage-row">
+  <div class="top"><span>{{ u.label }}</span><span class="val">{{ u.used }} / {{ u.limit if u.limit is not none else "Unlimited" }}</span></div>
+  <div class="meter {{ 'warn' if u.percent >= 85 }}"><span data-width="{{ u.percent if u.limit else 2 }}"></span></div>
+</div>
+{%- endmacro %}
+
+{% macro pager(page, endpoint) -%}
+{% if page.total %}
+<div class="pager">
+  <span>Showing {{ page.first }}–{{ page.last }} of {{ page.total }}</span>
+  <div class="btns">
+    {% set args = request.args.to_dict() %}{% set _ = args.update(kwargs) %}
+    {% if page.has_prev %}{% set _ = args.update(page=page.prev_num) %}<a class="btn btn-soft btn-sm" href="{{ url_for(endpoint, **args) }}">{{ icon("chevron-left") }} Previous</a>{% endif %}
+    {% if page.has_next %}{% set _ = args.update(page=page.next_num) %}<a class="btn btn-soft btn-sm" href="{{ url_for(endpoint, **args) }}">Next {{ icon("chevron-right") }}</a>{% endif %}
+  </div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro activity_icon(action) -%}
+{%- if action.startswith("auth.login_failed") or action == "auth.locked" -%}shield-alert
+{%- elif action.startswith("auth.") -%}log-in
+{%- elif action.startswith("org.") -%}building-2
+{%- elif action.startswith("subscription.") -%}credit-card
+{%- elif action.startswith("platform.") -%}shield
+{%- elif action.startswith("user.") -%}user-round
+{%- elif action.startswith("project.") -%}folder-kanban
+{%- elif action.startswith("task.") -%}list-checks
+{%- elif action.startswith("finance.") -%}wallet
+{%- elif action.startswith("resource.") -%}clock
+{%- elif action.startswith("people.") -%}users
+{%- elif action.startswith("support.") -%}life-buoy
+{%- elif action.startswith("document.") -%}file-text
+{%- elif action.startswith("me.visit") -%}map-pin
+{%- elif action.startswith("risk.") -%}shield-alert
+{%- elif action.startswith("issue.") -%}circle-alert
+{%- elif action.startswith("procurement.vendor") -%}store
+{%- elif action.startswith("procurement.") -%}shopping-cart
+{%- elif action.startswith("me.") -%}target
+{%- elif action.startswith("collab.meeting") -%}video
+{%- elif action.startswith("collab.") -%}megaphone
+{%- else -%}activity{%- endif -%}
+{%- endmacro %}
+
+{% macro flashes() -%}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="toast-stack" role="status" aria-live="polite">
+  {% for cat, msg in messages %}
+  {% set ic = {"success": "check-circle-2", "danger": "alert-circle", "warning": "alert-triangle"}.get(cat, "info") %}
+  <div class="flash {{ cat }}">{{ icon(ic) }}<div>{{ msg }}</div><button type="button" class="x" aria-label="Dismiss">{{ icon("x") }}</button></div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+{%- endmacro %}
+
+{% macro brand(href="/") -%}
+<a class="brand" href="{{ href }}" aria-label="Laari ProjectSphere home">
+  <span class="brand-mark">L</span>
+  <span class="brand-text"><span class="brand-name d-block">LAARI</span><span class="brand-sub d-block">PROJECTSPHERE</span></span>
+</a>
+{%- endmacro %}
+
+{% macro ticket_status(t) -%}
+{% set cls = {"open": "blue", "in_progress": "purple", "waiting": "amber", "resolved": "green", "closed": ""}.get(t.status, "") %}
+<span class="chip {{ cls }}"><span class="dot"></span>{{ t.status_label }}</span>
+{%- endmacro %}
+
+{% macro ticket_priority(t) -%}
+{% set cls = {"urgent": "red", "high": "amber"}.get(t.priority, "") %}
+<span class="chip {{ cls }}">{{ t.priority|capitalize }}</span>
+{%- endmacro %}
+
+{% macro role_checks(f, locked=()) -%}
+<fieldset class="mb-3">
+  <legend class="form-label">{{ f.label.text }}</legend>
+  <div class="check-grid">
+    {% for value, label, selected, _ in f.iter_choices() %}
+    <label class="check-tile {{ 'locked' if value in locked }}">
+      <input class="form-check-input" type="checkbox" name="{{ f.name }}" value="{{ value }}" {{ "checked" if selected }} {{ "disabled" if value in locked }}>
+      <span>{{ label }}</span>
+      {% if value in locked %}<input type="hidden" name="{{ f.name }}" value="{{ value }}">{% endif %}
+    </label>
+    {% endfor %}
+  </div>
+  {% for e in f.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+  <div class="form-hint">You can only give roles whose access you already have.{% if locked %} Locked roles can only be changed by someone with more access.{% endif %}</div>
+</fieldset>
+{%- endmacro %}
+
+{% macro project_status(p) -%}
+{% set cls = {"planning": "blue", "active": "purple", "on_hold": "amber", "completed": "green", "cancelled": ""}.get(p.status, "") %}
+<span class="chip {{ cls }}"><span class="dot"></span>{{ p.status_label }}</span>
+{%- endmacro %}
+
+{% macro project_health(p) -%}
+{% if p.is_open %}{% set cls = {"on_track": "green", "at_risk": "amber", "off_track": "red"}.get(p.health, "") %}
+<span class="chip {{ cls }}" title="Health">{{ p.health_label }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro project_priority(p) -%}
+{% set cls = {"critical": "red", "high": "amber"}.get(p.priority, "") %}
+<span class="chip {{ cls }}">{{ p.priority_label }}</span>
+{%- endmacro %}
+
+{% macro progress_bar(value, label=True) -%}
+<div class="progress-line">
+  <div class="meter {{ 'done' if value >= 100 }}"><span data-width="{{ value }}"></span></div>
+  {% if label %}<span class="pct">{{ value }}%</span>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro due(p) -%}
+{% if p.end_date %}<span class="nowrap {{ 'text-danger fw-semibold' if p.is_overdue }}">{{ p.end_date.strftime("%d %b %Y") }}</span>
+{% if p.is_overdue %}<div class="small text-danger">{{ -p.days_left }} day{{ "s" if -p.days_left != 1 }} overdue</div>
+{% elif p.days_left is not none and p.days_left <= 30 %}<div class="small text-3">{{ p.days_left }} day{{ "s" if p.days_left != 1 }} left</div>{% endif %}
+{% else %}<span class="text-3">—</span>{% endif %}
+{%- endmacro %}
+
+{% macro task_status(t) -%}
+{% set cls = {"todo": "", "in_progress": "blue", "blocked": "red", "review": "amber", "done": "green"}.get(t.status, "") %}
+<span class="chip {{ cls }}"><span class="dot"></span>{{ t.status_label }}</span>
+{%- endmacro %}
+
+{% macro task_priority(t) -%}
+{% set cls = {"urgent": "red", "high": "amber"}.get(t.priority, "") %}
+{% if t.priority in ("urgent", "high") %}<span class="chip {{ cls }}">{{ t.priority_label }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro task_due(t) -%}
+{% if t.due_date %}<span class="nowrap {{ 'text-danger fw-semibold' if t.is_overdue }}">{{ t.due_date.strftime("%d %b") }}{% if t.due_date.year != now_utc().year %} {{ t.due_date.year }}{% endif %}</span>{% else %}<span class="text-3">—</span>{% endif %}
+{%- endmacro %}
+
+{% macro expense_status(e) -%}
+{% set cls = {"draft": "", "submitted": "amber", "approved": "blue", "rejected": "red", "paid": "green"}.get(e.status, "") %}
+<span class="chip {{ cls }}"><span class="dot"></span>{{ e.status_label }}</span>
+{%- endmacro %}
+
+{% macro budget_status(p) -%}
+{% set cls = {"draft": "", "submitted": "amber", "approved": "green"}.get(p.budget_status, "") %}
+<span class="chip {{ cls }}"><span class="dot"></span>Budget {{ {"draft": "draft", "submitted": "awaiting approval", "approved": "approved"}[p.budget_status] }}</span>
+{%- endmacro %}
+
+{% macro doc_icon(ext) -%}
+{{ icon({"pdf": "file-text", "docx": "file-text", "doc": "file-text", "txt": "file-text", "xlsx": "file-spreadsheet", "xls": "file-spreadsheet", "csv": "file-spreadsheet", "pptx": "presentation", "ppt": "presentation", "png": "file-image", "jpg": "file-image", "jpeg": "file-image"}.get(ext, "file")) }}
+{%- endmacro %}
+
+{% macro people_checks(f, hint=None) -%}
+<fieldset class="mb-3">
+  <legend class="form-label">{{ f.label.text }}</legend>
+  {% if f.choices|length > 8 %}<input class="form-control mb-2" type="search" placeholder="Filter people" aria-label="Filter people" data-filter-tiles>{% endif %}
+  <div class="check-grid">
+    {% for value, label, selected, _ in f.iter_choices() %}
+    <label class="check-tile"><input class="form-check-input" type="checkbox" name="{{ f.name }}" value="{{ value }}" {{ "checked" if selected }}><span translate="no">{{ label }}</span></label>
+    {% else %}<p class="small text-3 mb-0">There's nobody else in your organization yet.</p>
+    {% endfor %}
+  </div>
+  {% for e in f.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+  {% if hint %}<div class="form-hint">{{ hint }}</div>{% endif %}
+</fieldset>
+{%- endmacro %}
+
+{% macro me_status(p) -%}
+{% set cls = {"achieved": "green", "on_track": "blue", "at_risk": "amber", "off_track": "red", "no_data": ""}[p.status] %}
+<span class="chip {{ cls }}"><span class="dot"></span>{{ p.status_label }}</span>
+{%- endmacro %}
+
+{% macro visit_status(v) -%}
+<span class="chip {{ {'draft': '', 'submitted': 'amber', 'reviewed': 'green'}[v.status] }}">{{ v.status_label }}</span>
+{%- endmacro %}
+
+{% macro visit_rating(v) -%}
+<span class="chip {{ {'good': 'green', 'concerns': 'amber', 'serious': 'red'}[v.rating] }}">{{ v.rating_label }}</span>
+{%- endmacro %}
+
+{% macro num(v, pct=False) -%}
+{%- if v is none -%}—{%- else -%}{{ "{:,.0f}".format(v) if v == v|int else "{:,.2f}".format(v) }}{{ "%" if pct }}{%- endif -%}
+{%- endmacro %}
+
+{% macro risk_level(r) -%}
+<span class="chip {{ {'critical': 'red', 'high': 'orange', 'medium': 'amber', 'low': 'green'}[r.level] }}"><span class="dot"></span>{{ r.level_label }} · {{ r.score }}</span>
+{%- endmacro %}
+
+{% macro issue_priority(i) -%}
+<span class="chip {{ {'critical': 'red', 'high': 'orange', 'medium': 'amber', 'low': ''}[i.priority] }}">{{ i.priority_label }}</span>
+{%- endmacro %}
+
+{% macro issue_status(i) -%}
+<span class="chip {{ {'open': 'blue', 'in_progress': 'purple', 'resolved': 'green', 'closed': ''}[i.status] }}">{{ i.status_label }}</span>
+{%- endmacro %}
+
+{% macro pr_status(p) -%}
+<span class="chip {{ {'draft': '', 'submitted': 'amber', 'approved': 'blue', 'rejected': 'red', 'ordered': 'purple', 'received': 'green', 'cancelled': ''}[p.status] }}">{{ p.status_label }}</span>
+{%- endmacro %}
+
+{% macro vendor_status(v) -%}
+<span class="chip {{ {'pending': 'amber', 'approved': 'green', 'suspended': 'orange', 'blacklisted': 'red'}[v.status] }}">{{ v.status_label }}</span>
+{%- endmacro %}
+
+{% macro heatmap(heat, base_url, active=None) -%}
+<div class="heat-wrap">
+  <div class="heat-y" aria-hidden="true">Likelihood →</div>
+  <div class="heat" role="table" aria-label="Open risks by likelihood and impact">
+    {% for l in [5, 4, 3, 2, 1] %}
+    <div class="heat-row" role="row"><span class="heat-axis" role="rowheader">{{ l }}</span>
+      {% for i in [1, 2, 3, 4, 5] %}{% set n = heat[l ~ "-" ~ i] %}{% set sc = l * i %}
+      {% set band = "critical" if sc >= 16 else ("high" if sc >= 10 else ("medium" if sc >= 5 else "low")) %}
+      {% if n %}<a class="heat-cell {{ band }} {{ 'active' if active == l ~ '-' ~ i }}" role="cell" href="{{ base_url }}{{ '&' if '?' in base_url else '?' }}cell={{ l }}-{{ i }}" aria-label="Likelihood {{ l }}, impact {{ i }}: {{ n }} risk{{ 's' if n != 1 }}">{{ n }}</a>
+      {% else %}<span class="heat-cell {{ band }} none" role="cell" aria-label="Likelihood {{ l }}, impact {{ i }}: none"></span>{% endif %}
+      {% endfor %}</div>
+    {% endfor %}
+    <div class="heat-row heat-x" aria-hidden="true"><span class="heat-axis"></span>{% for i in [1, 2, 3, 4, 5] %}<span class="heat-axis">{{ i }}</span>{% endfor %}</div>
+    <div class="heat-caption" aria-hidden="true">Impact →</div>
+  </div>
+</div>
+{%- endmacro %}

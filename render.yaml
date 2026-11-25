@@ -1,0 +1,135 @@
+# Render Blueprint — Laari ProjectSphere (Stage 1)
+# Deploy: Render Dashboard → New → Blueprint → pick this repository.
+services:
+  - type: web
+    name: projectsphere-web
+    runtime: python
+    plan: starter
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: flask db upgrade && flask seed
+    startCommand: gunicorn wsgi:app --workers 3 --threads 2 --timeout 60 --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.1
+      - key: APP_ENV
+        value: production
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: projectsphere-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: projectsphere-redis
+          property: connectionString
+      # Optional email (invitations). Fill in from the Render dashboard.
+      - key: MAIL_SERVER
+        sync: false
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # Document storage. Render's disk is wiped on each deploy, so production should use
+      # S3-compatible object storage (AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces).
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: MAX_UPLOAD_MB
+        value: "20"
+      # Billing and links in emails (Stage 11)
+      - key: APP_BASE_URL          # e.g. https://app.laariprojectsphere.com (no trailing slash)
+        sync: false
+      - key: PAYSTACK_SECRET_KEY   # Paystack dashboard → Settings → API Keys; webhook URL: <APP_BASE_URL>/api/webhooks/paystack
+        sync: false
+      - key: PLATFORM_BANK_DETAILS # printed on invoices for bank-transfer payers
+        sync: false
+
+  - type: worker
+    name: projectsphere-worker
+    runtime: python
+    plan: starter
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A celery_worker.celery worker --beat --loglevel=info --concurrency=2
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.1
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: projectsphere-web
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: projectsphere-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: projectsphere-redis
+          property: connectionString
+      # The worker sends the email outbox and issues renewal invoices, so it shares these with the web service
+      - key: APP_BASE_URL
+        fromService:
+          type: web
+          name: projectsphere-web
+          envVarKey: APP_BASE_URL
+      - key: MAIL_SERVER
+        fromService:
+          type: web
+          name: projectsphere-web
+          envVarKey: MAIL_SERVER
+      - key: MAIL_PORT
+        fromService:
+          type: web
+          name: projectsphere-web
+          envVarKey: MAIL_PORT
+      - key: MAIL_USERNAME
+        fromService:
+          type: web
+          name: projectsphere-web
+          envVarKey: MAIL_USERNAME
+      - key: MAIL_PASSWORD
+        fromService:
+          type: web
+          name: projectsphere-web
+          envVarKey: MAIL_PASSWORD
+      - key: MAIL_FROM
+        fromService:
+          type: web
+          name: projectsphere-web
+          envVarKey: MAIL_FROM
+
+  - type: keyvalue
+    name: projectsphere-redis
+    plan: starter
+    region: frankfurt
+    ipAllowList: []
+
+databases:
+  - name: projectsphere-db
+    plan: basic-256mb
+    region: frankfurt
+    databaseName: projectsphere
+    user: projectsphere

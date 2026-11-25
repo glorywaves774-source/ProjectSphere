@@ -1,0 +1,52 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ inv.number }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('admin.billing_home') }}">Billing</a>{% endblock %}
+{% block page_title %}Invoice {{ inv.number }}{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <span class="chip {{ {'paid': 'green', 'open': 'red' if inv.is_overdue else 'amber', 'void': ''}[inv.status] }}">{{ "Overdue" if inv.is_overdue else inv.status_label }}</span><span class="chip">{{ inv.kind_label }}</span>
+        <a class="btn btn-soft btn-sm ms-auto" href="{{ url_for('admin.billing_invoice_pdf', invoice_id=inv.id) }}">{{ icon("download") }} PDF</a>
+      </div>
+      <dl class="dl-grid">
+        <div><dt>Organization</dt><dd><a href="{{ url_for('admin.organization_detail', org_id=inv.organization_id) }}" translate="no">{{ inv.organization.name }}</a></dd></div>
+        <div><dt>Description</dt><dd>{{ inv.description }}</dd></div>
+        <div><dt>Amount</dt><dd class="fw-semibold">{{ inv.amount|money(inv.currency) }}{% if inv.credit %} <span class="small text-3">(after {{ inv.credit|money(inv.currency) }} credit)</span>{% endif %}</dd></div>
+        <div><dt>Due</dt><dd>{{ inv.due_date.strftime("%d %b %Y") }}</dd></div>
+        {% if inv.period_start %}<div><dt>Period</dt><dd>{{ inv.period_start.strftime("%d %b %Y") }} – {{ inv.period_end.strftime("%d %b %Y") }}</dd></div>{% endif %}
+        {% if inv.plan %}<div><dt>Plan</dt><dd>{{ inv.plan.name }}</dd></div>{% endif %}
+        {% if inv.paid_at %}<div><dt>Paid</dt><dd>{{ inv.paid_at|dt }} · {{ inv.payment_method }}{% if inv.payment_reference %} · <span class="code">{{ inv.payment_reference }}</span>{% endif %}</dd></div>{% endif %}
+        {% if inv.note %}<div><dt>Note</dt><dd>{{ inv.note }}</dd></div>{% endif %}
+      </dl>
+    </div>
+    {% if inv.payments %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("history") }} Online payment attempts</h2></div>
+      <ul class="dash-list">{% for p in inv.payments %}
+        <li><div class="min-w-0 flex-fill"><span class="code">{{ p.reference }}</span><div class="small text-3">{{ p.created_at|dt }}{% if p.channel %} · {{ p.channel }}{% endif %}{% if p.gateway_message %} · {{ p.gateway_message }}{% endif %}</div></div>
+          <span class="chip {{ {'success': 'green', 'pending': 'amber', 'failed': 'red', 'abandoned': ''}[p.status] }}">{{ p.status_label }}</span></li>
+      {% endfor %}</ul>
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-xl-4">
+    {% if inv.status == "open" %}
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("banknote") }} Record a payment</h2><p class="panel-sub">For bank transfers, mobile money or cheques</p></div></div>
+      <form method="post" novalidate>{{ pform.hidden_tag() }}<input type="hidden" name="action" value="paid">
+        {{ field(pform.method) }}{{ field(pform.reference) }}{{ field(pform.paid_on) }}
+        <button class="btn btn-primary w-100" type="submit">{{ icon("circle-check") }} Mark paid</button></form>
+    </div>
+    <div class="panel">
+      <form method="post" data-confirm="Tap again to void"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="void">
+        <label class="form-label" for="void-note">Void this invoice</label>
+        <textarea class="form-control mb-2" id="void-note" name="note" rows="2" maxlength="2000" placeholder="Reason"></textarea>
+        <button class="btn btn-danger-soft w-100" type="submit">{{ icon("ban") }} Void</button></form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

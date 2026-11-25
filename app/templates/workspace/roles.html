@@ -1,0 +1,44 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Roles & access{% endblock %}
+{% block page_title %}Roles & access{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("shield-check") }} Roles</h2><p class="panel-sub">Each role grants a precise set of permissions. People can hold more than one role.</p></div>
+    {% if current_user.can("roles.manage") %}<a class="btn btn-primary" href="{{ url_for('workspace.role_new') }}">{{ icon("plus") }} New role</a>{% endif %}</div>
+  <div class="row g-3">
+    {% for role in roles %}
+    <div class="col-md-6 col-xxl-4">
+      <div class="role-card">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div><h3>{{ role.name }}{% if not role.is_system %} <span class="chip blue">Custom</span>{% endif %}</h3><div class="small text-3">{{ role.description }}</div></div>
+          <span class="chip nowrap">{{ counts.get(role.id, 0) }} {{ "person" if counts.get(role.id, 0) == 1 else "people" }}</span>
+        </div>
+        {% if current_user.can("roles.manage") %}
+        <div class="row-actions mt-2">
+          {% if role.key != "org_admin" %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.role_edit', role_id=role.id) }}">{{ icon("pencil") }} Edit</a>{% endif %}
+          <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.role_new', copy=role.id) }}">{{ icon("copy") }} Duplicate</a>
+        </div>
+        {% endif %}
+        <div class="perm-list">
+          {% for p in role.permissions|sort(attribute="code") %}<span class="chip {{ 'purple' if p.code.endswith('.manage') or p.code.endswith('.approve') else '' }}" title="{{ p.description }}">{{ p.code }}</span>{% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<div class="panel">
+  <div class="panel-head"><h2 class="panel-title">{{ icon("book-open") }} Permission reference</h2></div>
+  <div class="table-wrap">
+    <table class="table-ps">
+      <thead><tr><th>Module</th><th>Permission</th><th>Allows</th></tr></thead>
+      <tbody>
+        {% for module, perms in modules.items() %}{% for code, desc in perms %}
+        <tr><td class="nowrap">{{ module if loop.first }}</td><td class="code"><span class="chip">{{ code }}</span></td><td>{{ desc }}</td></tr>
+        {% endfor %}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

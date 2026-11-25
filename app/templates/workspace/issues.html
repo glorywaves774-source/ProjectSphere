@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, issue_priority, issue_status %}
+{% block title %}Issues{% endblock %}
+{% block page_title %}Issue log{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("circle-alert") }} Issues</h2><p class="panel-sub">{{ page.total }} issue{{ "s" if page.total != 1 }}</p></div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.risks_xlsx', project=request.args.get('project')) }}">{{ icon("file-spreadsheet") }} Excel</a>
+      {% if can_add %}<a class="btn btn-primary btn-sm" href="{{ url_for('workspace.issue_new', project=request.args.get('project')) }}">{{ icon("plus") }} Log issue</a>{% endif %}</div></div>
+  <form class="search-row mb-3" method="get">
+    <select class="form-select" name="project" data-autosubmit aria-label="Project"><option value="">All projects</option>{% for p in projects %}<option value="{{ p.id }}" {{ "selected" if request.args.get("project")|int == p.id }}>{{ p.name }}</option>{% endfor %}</select>
+    <select class="form-select" name="status" data-autosubmit aria-label="Status"><option value="active" {{ "selected" if status == "active" }}>Open or in progress</option>{% for v, l in statuses %}<option value="{{ v }}" {{ "selected" if status == v }}>{{ l }}</option>{% endfor %}<option value="all" {{ "selected" if status == "all" }}>Any status</option></select>
+    <select class="form-select" name="priority" data-autosubmit aria-label="Priority"><option value="">Any priority</option>{% for v, l in priorities %}<option value="{{ v }}" {{ "selected" if request.args.get("priority") == v }}>{{ l }}</option>{% endfor %}</select>
+    <label class="form-check chip-toggle"><input class="form-check-input" type="checkbox" name="mine" value="1" data-autosubmit {{ "checked" if request.args.get("mine") == "1" }}> Assigned to me</label>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Issue</th><th>Priority</th><th>Status</th><th>Assigned to</th><th>Resolve by</th></tr></thead>
+    <tbody>{% for i in page.items %}
+      <tr><td class="cell-project"><a class="fw-semibold d-block" href="{{ url_for('workspace.issue', issue_id=i.id) }}" translate="no">{{ i.title }}</a><div class="small text-3"><span class="code">{{ i.project.code }} · {{ i.code }}</span>{% if i.risk %} · from {{ i.risk.code }}{% endif %}</div></td>
+        <td>{{ issue_priority(i) }}</td><td>{{ issue_status(i) }}</td>
+        <td class="nowrap" translate="no">{{ i.assignee.full_name if i.assignee else "—" }}</td>
+        <td class="date {{ 'text-danger fw-semibold' if i.is_overdue }}">{{ i.due_date.strftime("%d %b %Y") if i.due_date else "—" }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "workspace.issues") }}
+  {% else %}<div class="empty">{{ icon("circle-check") }}<div>No issues match.</div></div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}My account{% endblock %}
+{% block page_title %}My account{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6"><div class="panel">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("user-round") }} Profile</h2></div>
+    <dl class="dl-grid"><div><dt>Name</dt><dd translate="no">{{ current_user.full_name }}</dd></div><div><dt>Email</dt><dd translate="no">{{ current_user.email }}</dd></div><div><dt>Role</dt><dd>Super Admin</dd></div></dl>
+  </div></div>
+  <div class="col-lg-6"><div class="panel">
+    <div class="panel-head"><div><h2 class="panel-title">{{ icon("key-round") }} Password</h2><p class="panel-sub">Changing it signs you out on your other devices.</p></div></div>
+    <form method="post" novalidate>
+      {{ pw.hidden_tag() }}
+      {{ field(pw.current_password, autocomplete="current-password") }}
+      {{ field(pw.new_password, autocomplete="new-password", hint="10+ characters with upper and lower case and a number.") }}
+      {{ field(pw.confirm, autocomplete="new-password") }}
+      <button class="btn btn-primary" type="submit">{{ icon("lock") }} Change password</button>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

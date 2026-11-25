@@ -1,0 +1,32 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Gantt · {{ project.name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.projects') }}">Projects</a> · {{ project.code }}{% endblock %}
+{% block page_title %}<span translate="no">{{ project.name }}</span>{% endblock %}
+{% block content %}
+{% include "partials/project_tabs.html" %}
+<div class="panel">
+  <div class="panel-head">
+    <div><h2 class="panel-title">{{ icon("gantt-chart") }} Schedule</h2><p class="panel-sub">Bars show each task's dates and progress. Arrows show what waits for what.</p></div>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <div class="segmented" role="group" aria-label="Zoom">
+        <a href="#" data-zoom="day">Days</a><a href="#" data-zoom="week" aria-current="page">Weeks</a><a href="#" data-zoom="month">Months</a>
+      </div>
+      <button type="button" class="btn btn-soft" data-gantt-print>{{ icon("printer") }}<span class="label-wide"> Print</span></button>
+    </div>
+  </div>
+  <div class="gantt-legend">
+    <span><i class="lg-bar"></i> Task</span><span><i class="lg-bar crit"></i> Critical path</span>
+    <span><i class="lg-bar done"></i> Done</span><span><i class="lg-ms"></i> Milestone</span><span><i class="lg-today"></i> Today</span>
+  </div>
+  {% if gantt.rows and gantt.span %}
+  <div class="gantt" id="gantt" data-source="gantt-data" data-task-url="{{ url_for('workspace.task', task_id=0)[:-1] }}"></div>
+  <script type="application/json" id="gantt-data">{{ gantt|tojson }}</script>
+  {% if gantt.rows|selectattr("start", "none")|list %}<p class="small text-3 mt-2 mb-0">{{ icon("info") }} Tasks without dates aren't drawn. Give them a start or due date to place them on the chart.</p>{% endif %}
+  {% else %}
+  <div class="empty">{{ icon("gantt-chart") }}<div>Add tasks with start and due dates to see the schedule.</div>
+    {% if can_plan and project.is_open %}<a class="btn btn-primary mt-3" href="{{ url_for('workspace.task_new', project_id=project.id) }}">{{ icon("plus") }} Add a task</a>{% endif %}</div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/gantt.js') }}"></script>{% endblock %}

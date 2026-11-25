@@ -1,0 +1,40 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}{{ ev.title }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_me', project_id=project.id) }}">{{ project.code }} M&amp;E</a>{% endblock %}
+{% block page_title %}<span translate="no">{{ ev.title }}</span>{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="chip">{{ ev.kind_label }}</span><span class="chip {{ {'planned': '', 'in_progress': 'blue', 'completed': 'green'}[ev.status] }}">{{ ev.status_label }}</span>
+        {% if can_manage %}<div class="ms-auto d-flex gap-2">
+          <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.evaluation_edit', evaluation_id=ev.id) }}">{{ icon("pencil") }} Edit</a>
+          <form method="post" data-confirm="Tap again to delete"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><button class="btn btn-danger-soft btn-sm" type="submit">{{ icon("trash-2") }}<span class="label-wide"> Delete</span></button></form>
+        </div>{% endif %}
+      </div>
+      {% for label, text in [("Scope and questions", ev.scope), ("Key findings", ev.findings), ("Recommendations", ev.recommendations), ("Management response", ev.management_response)] %}
+        {% if text %}<h3 class="dep-head mt-3">{{ label }}</h3><div class="prose" translate="no">{{ text }}</div>{% endif %}
+      {% endfor %}
+      {% if not ev.findings %}<p class="text-3 mt-3 mb-0">Findings will appear here once the evaluation is done.</p>{% endif %}
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Details</h2></div>
+      <dl class="dl-grid one-col">
+        <div><dt>Evaluator</dt><dd>{% if ev.evaluator %}<span translate="no">{{ ev.evaluator }}</span> · {% endif %}{{ "External" if ev.is_external else "Internal" }}</dd></div>
+        <div><dt>Period</dt><dd>{{ ev.start_date.strftime("%d %b %Y") if ev.start_date else "?" }} → {{ ev.end_date.strftime("%d %b %Y") if ev.end_date else "?" }}</dd></div>
+        <div><dt>Report</dt><dd>{% if ev.report_document %}<a href="{{ url_for('workspace.document', doc_id=ev.report_document_id) }}" translate="no">{{ ev.report_document.title }}</a>{% else %}Not attached{% endif %}</dd></div>
+      </dl>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("star") }} Ratings</h2><p class="panel-sub">OECD-DAC criteria, 1 to 4</p></div>{% if ev.overall %}<span class="chip purple">Overall {{ ev.overall }}</span>{% endif %}</div>
+      <ul class="rating-list">{% for key, label, r in ev.ratings %}
+        <li><span>{{ label }}</span>{% if r %}<span class="rating-dots" role="img" aria-label="{{ r }} out of 4">{% for i in range(1, 5) %}<i class="{{ 'on' if i <= r }}"></i>{% endfor %}</span>{% else %}<span class="small text-3">Not rated</span>{% endif %}</li>
+      {% endfor %}</ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

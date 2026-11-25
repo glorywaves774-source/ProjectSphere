@@ -1,0 +1,16 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/macros.html" import field, icon %}
+{% block title %}Join {{ inv.organization.name }}{% endblock %}
+{% block content %}
+<div class="neu-card">
+  <h1>Join <span translate="no">{{ inv.organization.name }}</span></h1>
+  <p class="sub">{% if inv.invited_by %}<span translate="no">{{ inv.invited_by.full_name }}</span> invited you{% else %}You've been invited{% endif %} to Laari ProjectSphere as <strong translate="no">{{ inv.email }}</strong>.</p>
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.full_name, autocomplete="name") }}
+    {{ field(form.password, autocomplete="new-password", hint="10+ characters with upper and lower case and a number.") }}
+    {{ field(form.confirm, autocomplete="new-password") }}
+    <button class="btn btn-primary" type="submit">{{ icon("check") }} Join and sign in</button>
+  </form>
+</div>
+{% endblock %}

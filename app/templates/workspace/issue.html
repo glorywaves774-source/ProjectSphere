@@ -1,0 +1,56 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, issue_priority, issue_status %}
+{% block title %}{{ i.code }} · {{ i.title }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_risks', project_id=i.project_id) }}">{{ i.project.code }} risks &amp; issues</a> · {{ i.code }}{% endblock %}
+{% block page_title %}<span translate="no">{{ i.title }}</span>{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        {{ issue_priority(i) }}{{ issue_status(i) }}{% if i.is_overdue %}<span class="chip red">{{ icon("alarm-clock") }} Overdue</span>{% endif %}
+        {% if can_edit %}<div class="ms-auto"><a class="btn btn-soft btn-sm" href="{{ url_for('workspace.issue_edit', issue_id=i.id) }}">{{ icon("pencil") }} Edit</a></div>{% endif %}
+      </div>
+      {% if i.description %}<div class="prose mt-3" translate="no">{{ i.description }}</div>{% endif %}
+      {% if i.resolution %}<h3 class="dep-head mt-3">Resolution</h3><div class="prose" translate="no">{{ i.resolution }}</div>{% endif %}
+    </div>
+    {% if can_work %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("refresh-cw") }} Update</h2></div>
+      <form method="post" novalidate>
+        {{ sform.hidden_tag() }}<input type="hidden" name="action" value="status">
+        <div class="row g-3"><div class="col-sm-5">{{ field(sform.status, hint=None if can_manage else "Only the project's managers can close an issue.") }}</div></div>
+        {{ field(sform.resolution, hint=sform.resolution.description) }}
+        <button class="btn btn-primary" type="submit">{{ icon("save") }} Update</button>
+      </form>
+    </div>
+    {% endif %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("messages-square") }} Comments</h2></div>
+      {% if i.comments %}<ol class="timeline">{% for c in i.comments %}
+        <li><span class="avatar sm" translate="no">{{ c.author.initials if c.author else "?" }}</span>
+          <div class="timeline-body"><div class="thread-meta"><span class="who" translate="no">{{ c.author.full_name if c.author else "Former user" }}</span><span class="when nowrap">{{ c.created_at|dt }}</span></div>
+            <div class="thread-body" translate="no">{{ c.body }}</div></div></li>
+      {% endfor %}</ol>{% else %}<p class="text-3">No comments yet.</p>{% endif %}
+      {% if can_comment %}
+      <form method="post" class="mt-3" novalidate>{{ cform.hidden_tag() }}<input type="hidden" name="action" value="comment">
+        {{ field(cform.body, placeholder="Progress, blockers, decisions…") }}
+        <button class="btn btn-soft" type="submit">{{ icon("send") }} Comment</button></form>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Details</h2></div>
+      <dl class="dl-grid one-col">
+        <div><dt>Project</dt><dd><a href="{{ url_for('workspace.project_risks', project_id=i.project_id) }}" translate="no">{{ i.project.name }}</a></dd></div>
+        <div><dt>Assigned to</dt><dd translate="no">{{ i.assignee.full_name if i.assignee else "Unassigned" }}</dd></div>
+        <div><dt>Raised by</dt><dd><span translate="no">{{ i.raised_by.full_name if i.raised_by else "Former user" }}</span>, {{ i.created_at|dt }}</dd></div>
+        <div><dt>Resolve by</dt><dd>{{ i.due_date.strftime("%d %b %Y") if i.due_date else "Not set" }}</dd></div>
+        {% if i.risk %}<div><dt>From risk</dt><dd><a href="{{ url_for('workspace.risk', risk_id=i.risk_id) }}">{{ i.risk.code }}</a></dd></div>{% endif %}
+        {% if i.resolved_at %}<div><dt>Resolved</dt><dd>{{ i.resolved_at|dt }}</dd></div>{% endif %}
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

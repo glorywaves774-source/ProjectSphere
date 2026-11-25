@@ -1,0 +1,93 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, me_status, visit_status, visit_rating, num %}
+{% block title %}M&E · {{ project.name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.projects') }}">Projects</a> · {{ project.code }}{% endblock %}
+{% block page_title %}<span translate="no">{{ project.name }}</span>{% endblock %}
+{% block content %}
+{% include "partials/project_tabs.html" %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon">{{ icon("target") }}</span>Indicators</div><div class="kpi-value">{{ s.total }}</div><div class="kpi-foot">{{ s.counts.achieved }} achieved · {{ s.counts.on_track }} on track</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("gauge") }}</span>Achievement</div><div class="kpi-value">{{ s.avg_achievement ~ "%" if s.avg_achievement is not none else "—" }}</div><div class="kpi-foot">Average, baseline → target</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon red">{{ icon("triangle-alert") }}</span>Need attention</div><div class="kpi-value">{{ s.counts.at_risk + s.counts.off_track }}</div><div class="kpi-foot">{{ s.counts.off_track }} off track · {{ s.counts.at_risk }} at risk</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon amber">{{ icon("hourglass") }}</span>Data due</div><div class="kpi-value">{{ s.overdue }}</div><div class="kpi-foot">{{ s.pending }} result{{ "s" if s.pending != 1 }} awaiting verification</div></div></div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("network") }} Results framework</h2><p class="panel-sub">Goal → outcomes → outputs, each with the indicators that measure it</p></div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.project_me_pdf', project_id=project.id) }}">{{ icon("file-text") }} PDF report</a>
+      <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.project_me_xlsx', project_id=project.id) }}">{{ icon("file-spreadsheet") }} Excel</a>
+      {% if can_manage %}
+      <div class="dropdown"><button class="btn btn-primary btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">{{ icon("plus") }} Add</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          {% if not framework or framework[0].level != "goal" %}<li><a class="dropdown-item" href="{{ url_for('workspace.result_new', project_id=project.id, level='goal') }}">{{ icon("flag") }} Goal</a></li>{% endif %}
+          <li><a class="dropdown-item" href="{{ url_for('workspace.result_new', project_id=project.id, level='outcome') }}">{{ icon("circle-dot") }} Outcome</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('workspace.result_new', project_id=project.id, level='output') }}">{{ icon("box") }} Output</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('workspace.indicator_new', project_id=project.id) }}">{{ icon("target") }} Indicator</a></li>
+        </ul></div>
+      {% endif %}
+    </div></div>
+
+  {% macro ind_rows(inds) %}
+  <ul class="ind-list">{% for i in inds %}{% set p = s.progress[i.id] %}
+    <li class="{{ 'retired' if not i.is_active }}">
+      <div class="ind-main"><a class="fw-semibold" href="{{ url_for('workspace.indicator', indicator_id=i.id) }}"><span class="code">{{ i.code }}</span> <span translate="no">{{ i.name }}</span></a>
+        <div class="small text-3">Baseline {{ num(i.baseline_value, i.is_percent) }} → target {{ num(i.target_value, i.is_percent) }}{% if i.unit and not i.is_percent %} <span translate="no">{{ i.unit }}</span>{% endif %} by {{ i.target_date.strftime("%b %Y") }}
+          · Actual <b>{{ num(p.actual, i.is_percent) }}</b>{% if p.pending %} · <span class="text-warning-strong">{{ p.pending }} to verify</span>{% endif %}{% if p.overdue %} · <span class="text-danger">data overdue</span>{% endif %}{% if not i.is_active %} · retired{% endif %}</div>
+        <div class="progress-line mt-2" role="img" aria-label="{{ p.achievement or 0 }}% achieved, {{ p.expected }}% of time elapsed"><span class="bar {{ {'at_risk': 'amber', 'off_track': 'red', 'achieved': 'green'}.get(p.status, '') }}" data-width="{{ p.bar }}"></span><i class="expected-mark" data-left="{{ p.expected }}" title="Expected by now"></i></div></div>
+      <div class="ind-side"><span class="ind-pct">{{ p.achievement ~ "%" if p.achievement is not none else "—" }}</span>{{ me_status(p) }}</div>
+    </li>{% endfor %}</ul>
+  {% endmacro %}
+
+  {% macro node(item) %}
+  <div class="rf-node level-{{ item.level }}">
+    <div class="rf-head"><span class="rf-code">{{ item.code }}</span>
+      <div class="min-w-0 flex-fill"><div class="rf-level">{{ item.level_label }}</div><div class="rf-statement" translate="no">{{ item.statement }}</div>
+        {% if item.assumptions %}<div class="small text-3 mt-1">{{ icon("info") }} Assumes: <span translate="no">{{ item.assumptions }}</span></div>{% endif %}</div>
+      {% if can_manage %}<div class="rf-actions">
+        {% if item.level == "outcome" %}<a class="icon-btn sm" href="{{ url_for('workspace.result_new', project_id=project.id, level='output', parent=item.id) }}" aria-label="Add an output under {{ item.code }}" title="Add output">{{ icon("plus") }}</a>{% endif %}
+        <a class="icon-btn sm" href="{{ url_for('workspace.indicator_new', project_id=project.id, result=item.id) }}" aria-label="Add an indicator to {{ item.code }}" title="Add indicator">{{ icon("target") }}</a>
+        <a class="icon-btn sm" href="{{ url_for('workspace.result_edit', result_id=item.id) }}" aria-label="Edit {{ item.code }}" title="Edit">{{ icon("pencil") }}</a></div>{% endif %}
+    </div>
+    {% if item.indicators %}{{ ind_rows(item.indicators) }}{% endif %}
+    {% for c in item.children %}{{ node(c) }}{% endfor %}
+  </div>
+  {% endmacro %}
+
+  {% if framework %}{% for item in framework %}{{ node(item) }}{% endfor %}{% endif %}
+  {% set loose = s.rows|selectattr("0.result_id", "none")|map(attribute="0")|list %}
+  {% if loose %}<div class="rf-node level-other"><div class="rf-head"><span class="rf-code">—</span><div class="flex-fill"><div class="rf-level">Not linked to a result</div></div></div>{{ ind_rows(loose) }}</div>{% endif %}
+  {% if not framework and not loose %}
+  <div class="empty">{{ icon("network") }}<div>No results framework yet.</div>
+    {% if can_manage %}<p class="small mt-2 mb-3">Start with the goal (the long-term change), then the outcomes and outputs that lead to it, and the indicators that show progress.</p>
+    <a class="btn btn-primary" href="{{ url_for('workspace.result_new', project_id=project.id, level='goal') }}">{{ icon("flag") }} Add the goal</a>{% endif %}</div>
+  {% endif %}
+  <p class="small text-3 mt-3 mb-0">{{ icon("info") }} Achievement uses verified results only. Status compares it with how much time had passed when the result was measured; the thin mark on each bar shows how much time has passed today.</p>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-6">
+    <div class="panel h-100">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("map-pin") }} Monitoring visits</h2>
+        <div class="d-flex gap-2"><a class="small fw-semibold align-self-center" href="{{ url_for('workspace.visits', project=project.id) }}">View all</a>
+        {% if can_report %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.visit_new', project=project.id) }}">{{ icon("plus") }} Record</a>{% endif %}</div></div>
+      {% if visits %}<ul class="dash-list">{% for v in visits %}
+        <li><span class="activity-dot">{{ icon("map-pin") }}</span><div class="min-w-0 flex-fill"><a class="fw-semibold d-block" href="{{ url_for('workspace.visit', visit_id=v.id) }}" translate="no">{{ v.location }}</a>
+          <div class="small text-3"><span class="code">{{ v.reference }}</span> · {{ v.visit_date.strftime("%d %b %Y") }}{% if v.visited_by %} · <span translate="no">{{ v.visited_by.full_name }}</span>{% endif %}</div>
+          <div class="d-flex gap-1 flex-wrap mt-1">{{ visit_rating(v) }}{{ visit_status(v) }}</div></div></li>
+      {% endfor %}</ul>{% else %}<div class="empty">{{ icon("map-pin") }}<div>No visits recorded.</div></div>{% endif %}
+    </div>
+  </div>
+  <div class="col-xl-6">
+    <div class="panel h-100">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("clipboard-check") }} Evaluations</h2>
+        {% if can_manage %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.evaluation_new', project_id=project.id) }}">{{ icon("plus") }} Add</a>{% endif %}</div>
+      {% if evaluations %}<ul class="dash-list">{% for e in evaluations %}
+        <li><span class="activity-dot">{{ icon("clipboard-check") }}</span><div class="min-w-0 flex-fill"><a class="fw-semibold d-block" href="{{ url_for('workspace.evaluation', evaluation_id=e.id) }}" translate="no">{{ e.title }}</a>
+          <div class="small text-3">{{ e.kind_label }}{% if e.start_date %} · {{ e.start_date.strftime("%b %Y") }}{% endif %}{% if e.evaluator %} · <span translate="no">{{ e.evaluator }}</span>{% endif %}</div>
+          <div class="d-flex gap-1 flex-wrap mt-1"><span class="chip {{ {'planned': '', 'in_progress': 'blue', 'completed': 'green'}[e.status] }}">{{ e.status_label }}</span>{% if e.overall %}<span class="chip purple">{{ e.overall }} / 4</span>{% endif %}</div></div></li>
+      {% endfor %}</ul>{% else %}<div class="empty">{{ icon("clipboard-check") }}<div>No evaluations planned.</div></div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

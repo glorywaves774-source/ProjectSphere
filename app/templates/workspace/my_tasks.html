@@ -1,0 +1,24 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, task_status, task_priority, task_due, progress_bar %}
+{% block title %}My tasks{% endblock %}
+{% block page_title %}{{ "Tasks to approve" if tab == "review" else "My tasks" }}{% endblock %}
+{% block content %}
+<div class="panel">
+  {% include "partials/my_tasks_head.html" %}
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Task</th><th>Status</th><th>Progress</th><th>Due</th></tr></thead>
+    <tbody>{% for t in page.items %}
+      <tr><td class="cell-project"><a class="name fw-semibold d-block" href="{{ url_for('workspace.task', task_id=t.id) }}" translate="no">{% if t.is_milestone %}◆ {% endif %}{{ t.title }}</a>
+          <div class="small text-3"><span class="code">{{ t.project.code }}</span> · <span translate="no">{{ t.project.name }}</span>{% if tab == "review" and t.assignee %} · by <span translate="no">{{ t.assignee.full_name }}</span>{% endif %}</div></td>
+        <td><div class="d-flex gap-1 flex-wrap">{{ task_status(t) }}{{ task_priority(t) }}</div></td>
+        <td class="progress-cell">{% if not t.is_milestone %}{{ progress_bar(100 if t.is_done else t.progress) }}{% endif %}</td>
+        <td class="date">{{ task_due(t) }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "workspace.my_tasks") }}
+  {% else %}
+  <div class="empty">{{ icon("party-popper" if tab in ("open", "overdue", "review") else "inbox") }}<div>{{ {"open": "Nothing assigned to you right now.", "overdue": "Nothing overdue. Nice work.", "done": "No finished tasks yet.", "review": "No tasks are waiting for your approval."}[tab] }}</div></div>
+  {% endif %}
+</div>
+{% endblock %}

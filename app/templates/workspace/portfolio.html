@@ -1,0 +1,74 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, project_status, project_health, progress_bar, due %}
+{% block title %}Portfolio{% endblock %}
+{% block page_title %}Portfolio{% endblock %}
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-xl-3"><a class="kpi kpi-link" href="{{ url_for('workspace.projects', status='all') }}">
+    <div class="kpi-label"><span class="kpi-icon">{{ icon("folder-kanban") }}</span>Total projects</div>
+    <div class="kpi-value">{{ s.total }}</div><div class="kpi-foot">{{ s.open }} open · {{ s.completed }} completed</div></a></div>
+  <div class="col-6 col-xl-3"><a class="kpi kpi-link" href="{{ url_for('workspace.projects', status='active') }}">
+    <div class="kpi-label"><span class="kpi-icon blue">{{ icon("activity") }}</span>Active</div>
+    <div class="kpi-value">{{ s.active }}</div><div class="kpi-foot">Average progress {{ s.avg_progress }}% across open projects</div></a></div>
+  <div class="col-6 col-xl-3"><a class="kpi kpi-link" href="{{ url_for('workspace.projects', delayed=1) }}">
+    <div class="kpi-label"><span class="kpi-icon red">{{ icon("alarm-clock") }}</span>Delayed</div>
+    <div class="kpi-value">{{ s.delayed|length }}</div><div class="kpi-foot">Overdue or reported off track</div></a></div>
+  <div class="col-6 col-xl-3"><div class="kpi">
+    <div class="kpi-label"><span class="kpi-icon green">{{ icon("wallet") }}</span>Planned budget</div>
+    <div class="kpi-value kpi-money">{% if s.budgets %}{% for cur, amt in s.budgets.items() %}<div>{{ amt|money(cur) }}</div>{% endfor %}{% else %}—{% endif %}</div>
+    <div class="kpi-foot">Open projects{% if s.on_time_rate is not none %} · {{ s.on_time_rate }}% finished on time{% endif %}</div></div></div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("heart-pulse") }} Health of open projects</h2></div>
+    {% if s.open %}<div class="chart-box sm"><canvas data-chart="doughnut" data-source="c-health" role="img" aria-label="Open projects by health"></canvas></div>
+    <script type="application/json" id="c-health">{{ charts.health|tojson }}</script>{% else %}<div class="empty">No open projects.</div>{% endif %}
+  </div></div>
+  <div class="col-lg-4"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("chart-column") }} By status</h2></div>
+    {% if s.total %}<div class="chart-box sm"><canvas data-chart="bar" data-source="c-status" data-label="Projects" role="img" aria-label="Projects by status"></canvas></div>
+    <script type="application/json" id="c-status">{{ charts.status|tojson }}</script>{% else %}<div class="empty">No projects yet.</div>{% endif %}
+  </div></div>
+  <div class="col-lg-4"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("tags") }} Open projects by category</h2></div>
+    {% if s.open %}<div class="chart-box sm"><canvas data-chart="doughnut" data-source="c-cat" role="img" aria-label="Open projects by category"></canvas></div>
+    <script type="application/json" id="c-cat">{{ charts.category|tojson }}</script>{% else %}<div class="empty">No open projects.</div>{% endif %}
+  </div></div>
+</div>
+
+<div class="row g-4 mt-0">
+  <div class="col-xl-7"><div class="panel h-100">
+    <div class="panel-head"><div><h2 class="panel-title">{{ icon("alarm-clock") }} Needs attention</h2><p class="panel-sub">Open projects that are overdue or off track</p></div></div>
+    {% if s.delayed %}
+    <div class="table-wrap"><table class="table-ps">
+      <thead><tr><th>Project</th><th>Health</th><th>Progress</th><th>Due</th></tr></thead>
+      <tbody>{% for p in s.delayed %}
+        <tr><td><a class="name fw-semibold d-block" href="{{ url_for('workspace.project', project_id=p.id) }}" translate="no">{{ p.name }}</a><div class="small text-3"><span class="code">{{ p.code }}</span> · <span translate="no">{{ p.manager.full_name if p.manager else "No manager" }}</span></div></td>
+          <td>{{ project_health(p) }}</td><td class="progress-cell">{{ progress_bar(p.progress) }}</td><td class="date">{{ due(p) }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="empty">{{ icon("check-circle-2") }}<div>Nothing overdue or off track.</div></div>{% endif %}
+  </div></div>
+  <div class="col-xl-5"><div class="panel h-100">
+    <div class="panel-head"><div><h2 class="panel-title">{{ icon("calendar-clock") }} Due in the next 30 days</h2></div></div>
+    {% if s.due_soon %}<ul class="activity-list">{% for p in s.due_soon %}
+      <li><span class="activity-dot">{{ icon("flag") }}</span><div class="activity-body flex-fill"><a class="what d-block" href="{{ url_for('workspace.project', project_id=p.id) }}" translate="no">{{ p.name }}</a><div class="meta">{{ p.end_date.strftime("%d %b %Y") }} · {{ p.progress }}% done</div></div></li>
+    {% endfor %}</ul>{% else %}<div class="empty">No deadlines in the next 30 days.</div>{% endif %}
+  </div></div>
+</div>
+
+<div class="panel mt-4">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("network") }} Performance by department</h2><p class="panel-sub">Open projects only</p></div></div>
+  {% if s.by_department %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Department</th><th>Open projects</th><th>Delayed</th><th>Average progress</th></tr></thead>
+    <tbody>{% for name, d in s.by_department.items() %}
+      <tr><td class="fw-semibold" translate="no">{{ name }}</td><td class="num">{{ d.open }}</td>
+        <td class="num">{% if d.delayed %}<span class="chip red">{{ d.delayed }}</span>{% else %}0{% endif %}</td>
+        <td class="progress-cell">{{ progress_bar(d.avg_progress) }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">No open projects yet.</div>{% endif %}
+</div>
+{% endblock %}

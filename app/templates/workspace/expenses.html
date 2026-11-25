@@ -1,0 +1,39 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, expense_status %}
+{% block title %}Expenses{% endblock %}
+{% block page_title %}Expenses{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("receipt") }} Expense register</h2><p class="panel-sub">{{ page.total }} expense{{ "s" if page.total != 1 }}</p></div>
+    {% set args = request.args.to_dict() %}{% set _ = args.pop("page", None) %}
+    <a class="btn btn-soft" href="{{ url_for('workspace.expenses_xlsx', **args) }}">{{ icon("file-spreadsheet") }} Excel</a></div>
+  <form class="search-row mb-3" method="get" role="search">
+    <div class="search-box">{{ icon("search") }}<input class="form-control" type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Search description, payee or reference" aria-label="Search expenses"></div>
+    <select class="form-select" name="status" data-autosubmit aria-label="Status">
+      <option value="">Any status</option><option value="mine" {{ "selected" if status == "mine" }}>My requests</option>
+      {% for v, l in statuses %}<option value="{{ v }}" {{ "selected" if status == v }}>{{ l }}</option>{% endfor %}
+    </select>
+    <select class="form-select" name="project" data-autosubmit aria-label="Project">
+      <option value="">All projects</option>
+      {% for p in projects %}<option value="{{ p.id }}" {{ "selected" if request.args.get("project")|int == p.id }}>{{ p.name }}</option>{% endfor %}
+    </select>
+    <input class="form-control date-input" type="date" name="from" value="{{ request.args.get('from', '') }}" aria-label="From date">
+    <input class="form-control date-input" type="date" name="to" value="{{ request.args.get('to', '') }}" aria-label="To date">
+    <button class="btn btn-soft" type="submit">Filter</button>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Expense</th><th>Date</th><th class="num">Amount</th><th>Status</th><th>Requested by</th></tr></thead>
+    <tbody>{% for e in page.items %}
+      <tr><td class="cell-project"><a class="name fw-semibold d-block" href="{{ url_for('workspace.expense', expense_id=e.id) }}" translate="no">{{ e.description }}</a>
+          <div class="small text-3"><span class="code">{{ e.reference }}</span> · {{ e.project.code }} · {{ e.budget_line.code }}{% if e.payee %} · <span translate="no">{{ e.payee }}</span>{% endif %}</div></td>
+        <td class="date">{{ e.spent_on.strftime("%d %b %Y") }}</td>
+        <td class="num fw-semibold">{{ e.amount|money(e.currency) }}</td>
+        <td><div class="d-flex gap-1 flex-wrap">{{ expense_status(e) }}{% if e.over_budget %}<span class="chip red">Over</span>{% endif %}</div></td>
+        <td class="nowrap" translate="no">{{ e.requested_by.full_name if e.requested_by else "—" }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "workspace.expenses") }}
+  {% else %}<div class="empty">{{ icon("receipt") }}<div>No expenses match.</div></div>{% endif %}
+</div>
+{% endblock %}

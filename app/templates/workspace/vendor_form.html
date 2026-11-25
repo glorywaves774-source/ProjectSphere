@@ -1,0 +1,27 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ ("Edit " ~ vendor.code) if vendor else "Register a vendor" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.vendors') }}">Vendors</a>{% endblock %}
+{% block page_title %}{{ ("Edit " ~ vendor.name) if vendor else "Register a vendor" }}{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="row g-3">
+      <div class="col-md-8">{{ field(form.name) }}</div>
+      <div class="col-md-4">{{ field(form.category) }}</div>
+      <div class="col-md-6">{{ field(form.contact_name) }}</div>
+      <div class="col-md-6">{{ field(form.phone, autocomplete="off") }}</div>
+      <div class="col-md-6">{{ field(form.email, autocomplete="off") }}</div>
+      <div class="col-md-6">{{ field(form.tax_id, hint="Needed before the vendor can be approved.") }}</div>
+    </div>
+    {{ field(form.registration_no) }}
+    {{ field(form.address) }}
+    {{ field(form.notes) }}
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("save") }} Save vendor</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.vendor', vendor_id=vendor.id) if vendor else url_for('workspace.vendors') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

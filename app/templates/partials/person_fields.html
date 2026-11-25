@@ -1,0 +1,12 @@
+{% from "partials/macros.html" import field, role_checks %}
+<div class="row g-3">
+  <div class="col-md-6">{{ field(form.full_name, autocomplete="off") }}</div>
+  {% if form.email %}<div class="col-md-6">{{ field(form.email, autocomplete="off") }}</div>{% endif %}
+  <div class="col-md-6">{{ field(form.job_title) }}</div>
+  <div class="col-md-6">{{ field(form.department_id) }}</div>
+  {% if form.phone %}<div class="col-md-6">{{ field(form.phone, autocomplete="off") }}</div>{% endif %}
+  {% if form.staff_number %}<div class="col-md-6">{{ field(form.staff_number) }}</div>{% endif %}
+  {% if form.employment_type %}<div class="col-md-6">{{ field(form.employment_type) }}</div>{% endif %}
+  {% if form.start_date %}<div class="col-md-6">{{ field(form.start_date) }}</div>{% endif %}
+  {% if form.weekly_hours %}<div class="col-md-6">{{ field(form.weekly_hours, hint="Normal working hours per week, used for workload.") }}</div>{% endif %}
+</div>

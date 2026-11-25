@@ -1,0 +1,13 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Invitation not valid{% endblock %}
+{% block content %}
+<div class="neu-card">
+  <h1>This link doesn't work any more</h1>
+  <p class="sub">{% if reason == "accepted" %}This invitation has already been used. Sign in with your email and password.
+    {% elif reason == "expired" %}This invitation has expired. Ask your administrator to send a new one.
+    {% elif reason == "revoked" %}This invitation was withdrawn. Ask your administrator if you think that's a mistake.
+    {% else %}We couldn't find this invitation. Check you copied the whole link, or ask for a new one.{% endif %}</p>
+  <a class="btn btn-primary" href="{{ url_for('auth.login') }}">{{ icon("log-in") }} Go to sign in</a>
+</div>
+{% endblock %}

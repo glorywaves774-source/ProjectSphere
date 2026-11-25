@@ -1,0 +1,25 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}{{ title }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.team') }}">Team</a>{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="panel credentials">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("key-round") }} Share privately with <span translate="no">{{ who }}</span></h2>
+    <p class="panel-sub">This is shown only once. Send it through a private channel, such as a direct message.</p></div></div>
+  <dl class="dl-grid">
+    <div><dt>Email</dt><dd class="code" translate="no">{{ email }}</dd></div>
+    {% if password %}
+    <div><dt>Sign-in page</dt><dd class="code">{{ url_for("auth.login", _external=True) }}</dd></div>
+    <div><dt>One-time password</dt><dd><code class="secret" translate="no">{{ password }}</code></dd></div>
+    {% endif %}
+  </dl>
+  {% if link %}
+  <label class="form-label mt-3" for="invite-link">Invitation link</label>
+  <div class="copy-row"><input id="invite-link" class="form-control code" value="{{ link }}" readonly data-select-all>
+    <button class="btn btn-soft" type="button" data-copy="#invite-link">{{ icon("copy") }} Copy</button></div>
+  {% endif %}
+  {% if note %}<p class="small text-3 mt-3 mb-3">{{ icon("info") }} {{ note }}</p>{% endif %}
+  <a class="btn btn-primary mt-2" href="{{ url_for('workspace.team') }}">{{ icon("check") }} Done</a>
+</div>
+{% endblock %}

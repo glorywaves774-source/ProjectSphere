@@ -1,0 +1,31 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}New organization{% endblock %}
+{% block page_title %}New organization{% endblock %}
+{% block content %}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-4">
+    <div class="col-xl-7"><div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("building") }} Organization</h2></div>
+      <div class="row g-3">
+        <div class="col-md-7">{{ field(form.org_name) }}</div>
+        <div class="col-md-5">{{ field(form.org_type) }}</div>
+        <div class="col-md-4">{{ field(form.country) }}</div>
+        <div class="col-md-4">{{ field(form.plan) }}</div>
+        <div class="col-md-4">{{ field(form.status) }}</div>
+      </div>
+    </div></div>
+    <div class="col-xl-5"><div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("user-round-plus") }} First admin</h2>
+        <p class="panel-sub">They get a one-time password, shown to you once, and must choose their own when they first sign in.</p></div></div>
+      {{ field(form.admin_name) }}
+      {{ field(form.admin_email, autocomplete="off") }}
+    </div></div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">{{ icon("sparkles") }} Create organization</button>
+    <a class="btn btn-soft" href="{{ url_for('admin.organizations') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

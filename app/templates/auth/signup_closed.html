@@ -1,0 +1,11 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Sign-up by invitation{% endblock %}
+{% block content %}
+<div class="neu-card">
+  <h1>Sign-up is by invitation</h1>
+  <p class="sub">New workspaces are currently set up by our team. Write to us and we'll get your organization started.</p>
+  <a class="btn btn-primary" href="mailto:{{ SALES_EMAIL }}">{{ icon("mail") }} Contact us</a>
+  <p class="auth-switch">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, project_status, project_health, project_priority, progress_bar, due %}
+{% block title %}Projects{% endblock %}
+{% block page_title %}Projects{% endblock %}
+{% block content %}
+<div class="panel">
+  {% include "partials/project_head.html" %}
+  {% include "partials/project_filters.html" %}
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Project</th><th>Status</th><th>Priority</th><th>Manager</th><th>Progress</th><th>Due</th></tr></thead>
+    <tbody>{% for p in page.items %}
+      <tr>
+        <td class="cell-project">
+          <div class="d-flex align-items-start gap-2">
+            <span class="cat-dot" data-color="{{ p.category.color if p.category else '#94a3b8' }}" title="{{ p.category.name if p.category else 'No category' }}"></span>
+            <div><a class="name d-block fw-semibold" href="{{ url_for('workspace.project', project_id=p.id) }}" translate="no">{{ p.name }}</a>
+              <div class="small text-3"><span class="code">{{ p.code }}</span>{% if p.department %} · <span translate="no">{{ p.department.name }}</span>{% endif %}{% if p.location %} · <span translate="no">{{ p.location }}</span>{% endif %}</div></div>
+          </div>
+        </td>
+        <td><div class="d-flex flex-wrap gap-1">{{ project_status(p) }}{{ project_health(p) }}</div></td>
+        <td>{{ project_priority(p) }}</td>
+        <td class="nowrap" translate="no">{{ p.manager.full_name if p.manager else "—" }}</td>
+        <td class="progress-cell">{{ progress_bar(p.progress) }}</td>
+        <td class="date">{{ due(p) }}</td>
+      </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "workspace.projects") }}
+  {% else %}
+  <div class="empty">{{ icon("folder-kanban") }}<div>No projects match.{% if can_create and status == "open" and not q %} Register your first project to get started.{% endif %}</div>
+    {% if can_create %}<a class="btn btn-primary mt-3" href="{{ url_for('workspace.project_new') }}">{{ icon("plus") }} New project</a>{% endif %}</div>
+  {% endif %}
+</div>
+{% endblock %}

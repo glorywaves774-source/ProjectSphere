@@ -1,0 +1,35 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ ("Edit " ~ visit.reference) if visit else "Record a visit" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.visits') }}">Field visits</a>{% endblock %}
+{% block page_title %}{{ ("Edit " ~ visit.reference) if visit else "Record a monitoring visit" }}{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="row g-3">
+      <div class="col-md-8">{{ field(form.project_id) }}</div>
+      <div class="col-md-4">{{ field(form.visit_date) }}</div>
+    </div>
+    {{ field(form.location, hint=form.location.description) }}
+    <fieldset class="gps-box mb-3">
+      <legend class="form-label">GPS location <span class="text-3 fw-normal">(optional)</span></legend>
+      <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-4">{{ form.latitude.label(class_="form-label small") }}{{ form.latitude(class_="form-control" ~ (" is-invalid" if form.latitude.errors else ""), inputmode="decimal", placeholder="5.603717") }}</div>
+        <div class="col-6 col-md-4">{{ form.longitude.label(class_="form-label small") }}{{ form.longitude(class_="form-control", inputmode="decimal", placeholder="-0.186964") }}</div>
+        <div class="col-md-4"><button class="btn btn-soft w-100" type="button" data-geolocate="#latitude,#longitude" hidden>{{ icon("locate-fixed") }} Use my location</button></div>
+      </div>
+      <div class="form-hint" data-geo-status>Coordinates are used only on this visit record.</div>
+    </fieldset>
+    {{ field(form.purpose) }}
+    {{ field(form.people_met, hint=form.people_met.description) }}
+    {{ field(form.findings, hint=form.findings.description) }}
+    {{ field(form.recommendations) }}
+    {{ field(form.rating) }}
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("save") }} Save draft</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.visit', visit_id=visit.id) if visit else url_for('workspace.visits') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

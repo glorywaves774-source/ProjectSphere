@@ -1,0 +1,20 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Timesheets to approve{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.timesheet') }}">My timesheet</a>{% endblock %}
+{% block page_title %}Timesheets to approve{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("inbox") }} Waiting for you</h2><p class="panel-sub">Timesheets from people in your department, on your projects, or everyone if you manage HR.</p></div></div>
+  {% if sheets %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Person</th><th>Week</th><th class="num">Hours</th><th>Submitted</th></tr></thead>
+    <tbody>{% for t in sheets %}
+      <tr><td><div class="cell-user"><span class="avatar sm" translate="no">{{ t.user.initials }}</span><a class="name fw-semibold" href="{{ url_for('workspace.timesheet_review', ts_id=t.id) }}" translate="no">{{ t.user.full_name }}</a></div></td>
+        <td class="date">{{ t.week_start.strftime("%d %b") }} – {{ t.week_end.strftime("%d %b %Y") }}</td>
+        <td class="num fw-semibold">{{ t.total_hours|qty }}</td><td class="date">{{ t.submitted_at|dt }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">{{ icon("party-popper") }}<div>No timesheets waiting for you.</div></div>{% endif %}
+</div>
+{% endblock %}

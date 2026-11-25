@@ -1,0 +1,28 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ "Edit expense" if expense else "Record expense" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_budget', project_id=project.id) }}">{{ project.code }} budget</a>{% endblock %}
+{% block page_title %}{{ ("Edit " ~ expense.reference) if expense else "Record an expense" }}{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="row g-3">
+      <div class="col-12">{{ field(form.budget_line_id) }}</div>
+      <div class="col-md-8">{{ field(form.description) }}</div>
+      <div class="col-md-4">{{ field(form.spent_on) }}</div>
+      <div class="col-md-6">{{ field(form.payee) }}</div>
+      <div class="col-md-6">{{ field(form.invoice_ref) }}</div>
+      <div class="col-md-5">{{ field(form.amount) }}</div>
+      <div class="col-md-3">{{ field(form.currency) }}</div>
+      <div class="col-md-4">{{ field(form.exchange_rate, hint="Only for other currencies. Leave empty to use finance's rate.") }}</div>
+    </div>
+    <p class="small text-3">{{ icon("info") }} The project's currency is {{ project.currency }}.{% if rates %} Rates set by finance: {% for c, r in rates.items() %}1 {{ c }} = {{ r|round(4) }} {{ current_user.organization.currency }}{{ ", " if not loop.last }}{% endfor %}.{% endif %}</p>
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit" name="submit_now" value="1">{{ icon("send") }} Save and send for approval</button>
+      <button class="btn btn-soft" type="submit">{{ icon("save") }} Save draft</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.expense', expense_id=expense.id) if expense else url_for('workspace.project_budget', project_id=project.id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

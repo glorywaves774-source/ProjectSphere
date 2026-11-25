@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager %}
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("bell") }} Notifications</h2><p class="panel-sub">{{ UNREAD.notes }} unread</p></div>
+    {% if UNREAD.notes %}<form method="post" action="{{ url_for('workspace.notifications', show=show) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-soft" type="submit">{{ icon("check-check") }} Mark all read</button></form>{% endif %}</div>
+  <nav class="segmented mb-3" aria-label="Show">
+    <a href="{{ url_for('workspace.notifications') }}" {% if show != "unread" %}aria-current="page"{% endif %}>All</a>
+    <a href="{{ url_for('workspace.notifications', show='unread') }}" {% if show == "unread" %}aria-current="page"{% endif %}>Unread</a>
+  </nav>
+  {% if page.items %}
+  <ul class="note-list">{% for n in page.items %}
+    <li class="{{ 'unread' if not n.read_at }}"><span class="note-dot" aria-hidden="true"></span>
+      <a class="note-body" href="{{ url_for('workspace.notification_open', nid=n.id) }}"><span class="d-block" translate="no">{{ n.title }}</span>
+        <span class="small text-3">{% if n.actor %}<span translate="no">{{ n.actor.full_name }}</span> · {% endif %}<span class="nowrap">{{ n.created_at|dt }}</span>{% if not n.read_at %}<span class="visually-hidden"> (unread)</span>{% endif %}</span></a></li>
+  {% endfor %}</ul>
+  {{ pager(page, "workspace.notifications") }}
+  {% else %}<div class="empty">{{ icon("bell-off") }}<div>{{ "Nothing unread." if show == "unread" else "No notifications yet. You'll hear here when someone assigns you work, approves something or messages you." }}</div></div>{% endif %}
+</div>
+{% endblock %}

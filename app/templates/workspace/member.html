@@ -1,0 +1,74 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, role_checks, progress_bar %}
+{% block title %}{{ member.full_name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.team') }}">Team</a>{% endblock %}
+{% block page_title %}<span translate="no">{{ member.full_name }}</span>{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    {% if can_edit and manageable %}
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="panel">
+        <div class="panel-head"><h2 class="panel-title">{{ icon("id-card") }} Staff details</h2></div>
+        <div class="mb-3"><label class="form-label" for="email-ro">Email</label><input id="email-ro" class="form-control" value="{{ member.email }}" disabled translate="no"></div>
+        {% include "partials/person_fields.html" %}
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2 class="panel-title">{{ icon("shield-check") }} Access</h2></div>
+        {{ role_checks(form.roles, locked=locked_roles) }}
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">{{ icon("save") }} Save changes</button></div>
+    </form>
+    {% else %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("id-card") }} Staff details</h2></div>
+      {% if can_edit %}<p class="small text-3">{{ icon("lock") }} This person has access you don't have, so only someone with at least their access can change them.</p>{% endif %}
+      <dl class="dl-grid" translate="no">
+        <div><dt>Email</dt><dd>{{ member.email }}</dd></div>
+        <div><dt>Job title</dt><dd>{{ member.job_title or "—" }}</dd></div>
+        <div><dt>Department</dt><dd>{{ member.department.name if member.department else "—" }}</dd></div>
+        <div><dt>Phone</dt><dd>{{ member.phone or "—" }}</dd></div>
+        <div><dt>Staff ID</dt><dd>{{ member.staff_number or "—" }}</dd></div>
+        <div><dt>Employment</dt><dd>{{ member.employment_label or "—" }}</dd></div>
+        <div><dt>Start date</dt><dd>{{ member.start_date.strftime("%d %b %Y") if member.start_date else "—" }}</dd></div>
+        <div><dt>Roles</dt><dd>{{ member.role_names|join(", ") }}</dd></div>
+      </dl>
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-xl-4">
+    {% if wl %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("gauge-circle") }} Workload</h2>{% if wl.over %}<span class="chip red">Over capacity</span>{% endif %}</div>
+      <div class="kpi-label mb-1">Allocated across open projects</div>{{ progress_bar(wl.allocation if wl.allocation <= 100 else 100) }}
+      <div class="small text-3 mb-3">{{ wl.allocation }}%{% for p, pct in wl.projects %} · {{ p.code }} {{ pct }}%{% endfor %}</div>
+      <div class="kpi-label mb-1">Planned work, next 4 weeks</div>{{ progress_bar(wl.load if wl.load <= 100 else 100) }}
+      <div class="small text-3 mb-3">{{ wl.planned_hours|qty }} h of {{ wl.capacity|qty }} h capacity</div>
+      <dl class="dl-grid one-col"><div><dt>Open tasks</dt><dd>{{ wl.open_tasks }}{% if wl.overdue %} · <span class="text-danger">{{ wl.overdue }} overdue</span>{% endif %}</dd></div>
+        <div><dt>Hours logged, last 7 days</dt><dd>{{ wl.logged_7d|qty }} h</dd></div></dl>
+    </div>
+    {% endif %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("user-round") }} Account</h2>
+        {% if not member.is_active_user %}<span class="chip">Deactivated</span>{% elif member.must_change_password %}<span class="chip amber">Not signed in yet</span>{% else %}<span class="chip green"><span class="dot"></span>Active</span>{% endif %}</div>
+      <dl class="dl-grid mb-3">
+        <div><dt>Last sign-in</dt><dd>{{ member.last_login_at|dt }}</dd></div>
+        <div><dt>Joined</dt><dd>{{ member.created_at|dt("%d %b %Y") }}</dd></div>
+      </dl>
+      {% if can_edit and manageable and member.id != current_user.id %}
+      <div class="d-grid gap-2">
+        {% if member.is_active_user %}
+        <form method="post" action="{{ url_for('workspace.member_action', user_id=member.id, action='reset') }}" data-confirm="Tap again to reset"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-soft w-100" type="submit">{{ icon("key-round") }} Issue one-time password</button></form>
+        <form method="post" action="{{ url_for('workspace.member_action', user_id=member.id, action='deactivate') }}" data-confirm="Tap again to deactivate"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-danger-soft w-100" type="submit">{{ icon("user-x") }} Deactivate</button></form>
+        {% else %}
+        <form method="post" action="{{ url_for('workspace.member_action', user_id=member.id, action='activate') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-success-soft w-100" type="submit">{{ icon("user-check") }} Reactivate</button></form>
+        {% endif %}
+      </div>
+      {% elif member.id == current_user.id %}
+      <a class="btn btn-soft w-100" href="{{ url_for('workspace.account') }}">{{ icon("settings") }} Manage my account</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

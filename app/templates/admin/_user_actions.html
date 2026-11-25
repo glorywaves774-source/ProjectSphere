@@ -1,0 +1,13 @@
+{% from "partials/macros.html" import icon %}
+<div class="row-actions">
+  {% set back = request.path %}
+  {% if u.locked_until and u.locked_until > now_utc() %}
+  <form method="post" action="{{ url_for('admin.user_action', user_id=u.id, action='unlock') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="back" value="{{ back }}"><button class="btn btn-soft btn-sm" type="submit">{{ icon("lock-open") }} Unlock</button></form>
+  {% endif %}
+  {% if u.is_active_user %}
+  <form method="post" action="{{ url_for('admin.user_action', user_id=u.id, action='reset') }}" data-confirm="Tap again to reset"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="back" value="{{ back }}"><button class="btn btn-soft btn-sm" type="submit" title="Issue a one-time password">{{ icon("key-round") }} Reset</button></form>
+  <form method="post" action="{{ url_for('admin.user_action', user_id=u.id, action='deactivate') }}" data-confirm="Tap again"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="back" value="{{ back }}"><button class="btn btn-danger-soft btn-sm" type="submit" title="Deactivate and sign out">{{ icon("user-x") }} Deactivate</button></form>
+  {% else %}
+  <form method="post" action="{{ url_for('admin.user_action', user_id=u.id, action='activate') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="back" value="{{ back }}"><button class="btn btn-success-soft btn-sm" type="submit">Reactivate</button></form>
+  {% endif %}
+</div>

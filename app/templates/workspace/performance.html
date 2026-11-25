@@ -1,0 +1,25 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, progress_bar %}
+{% block title %}Team performance{% endblock %}
+{% block page_title %}Team performance{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head">
+    <div><h2 class="panel-title">{{ icon("trophy") }} Delivery over the last {{ days }} days</h2>
+      <p class="panel-sub">Facts from tasks and timesheets, for supportive one-to-ones and fair workload decisions rather than a league table.</p></div>
+    <nav class="segmented" aria-label="Period">{% for d in (30, 90, 180, 365) %}<a href="{{ url_for('workspace.performance', days=d) }}" {% if d == days %}aria-current="page"{% endif %}>{{ d }} days</a>{% endfor %}</nav>
+  </div>
+  {% if rows %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Person</th><th class="num">Tasks completed</th><th>On time</th><th class="num">Overdue now</th><th class="num">Hours logged</th><th class="num">Hours / week</th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr><td><div class="cell-user"><span class="avatar sm" translate="no">{{ r.user.initials }}</span><div><a class="name fw-semibold d-block" href="{{ url_for('workspace.member', user_id=r.user.id) }}" translate="no">{{ r.user.full_name }}</a><div class="sub" translate="no">{{ r.user.job_title or r.user.role_names|join(", ") }}</div></div></div></td>
+        <td class="num fw-semibold">{{ r.completed }}</td>
+        <td class="progress-cell">{% if r.on_time_pct is not none %}{{ progress_bar(r.on_time_pct) }}{% else %}<span class="text-3 small">No dated tasks</span>{% endif %}</td>
+        <td class="num">{% if r.overdue %}<span class="chip red">{{ r.overdue }}</span>{% else %}0{% endif %}</td>
+        <td class="num">{{ r.hours|qty }}</td><td class="num">{{ r.hours_per_week|qty }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">No active people.</div>{% endif %}
+</div>
+{% endblock %}

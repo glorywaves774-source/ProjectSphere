@@ -1,0 +1,31 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, activity_icon %}
+{% block title %}Activity log{% endblock %}
+{% block page_title %}Activity log{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("history") }} Audit trail</h2><p class="panel-sub">Sign-ins, changes and security events in your organization.</p></div></div>
+  <form class="search-row mb-3" method="get" role="search">
+    <div class="search-box">{{ icon("search") }}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Search events" aria-label="Search events"></div>
+    <button class="btn btn-soft" type="submit">Search</button>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap">
+    <table class="table-ps">
+      <thead><tr><th>When</th><th>Event</th><th>Person</th><th>Address</th></tr></thead>
+      <tbody>
+      {% for e in page.items %}
+        <tr>
+          <td class="date">{{ e.created_at|dt }}</td>
+          <td><div class="d-flex align-items-center gap-2"><span class="activity-dot">{{ icon(activity_icon(e.action)) }}</span><div><div>{{ e.summary or e.action }}</div><div class="small text-3 code">{{ e.action }}</div></div></div></td>
+          <td class="nowrap" translate="no">{{ e.user.full_name if e.user else "System" }}</td>
+          <td class="code text-3">{{ e.ip_address or "—" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ pager(page, "workspace.activity") }}
+  {% else %}<div class="empty">{{ icon("inbox") }}<div>No events found.</div></div>{% endif %}
+</div>
+{% endblock %}

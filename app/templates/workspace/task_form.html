@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, check %}
+{% block title %}{{ task.title if task else "New task" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_tasks', project_id=project.id) }}">{{ project.code }} tasks</a>{% endblock %}
+{% block page_title %}{{ ("Edit " ~ ("milestone" if task.is_milestone else "task")) if task else ("New milestone" if form.is_milestone.data else "New task") }}{% endblock %}
+{% block content %}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-4">
+    <div class="col-xl-8"><div class="panel">
+      {{ field(form.title, placeholder="e.g. Drill borehole at Gbanyamni") }}
+      {{ field(form.description) }}
+      {{ field(form.parent_id, hint="Put this under another task to build the work breakdown.") }}
+      {{ check(form.is_milestone) }}
+      {{ check(form.requires_approval) }}
+    </div></div>
+    <div class="col-xl-4"><div class="panel">
+      {{ field(form.assignee_id) }}
+      {{ field(form.priority) }}
+      <div class="row g-3"><div class="col-6">{{ field(form.start_date) }}</div><div class="col-6">{{ field(form.due_date) }}</div></div>
+      {{ field(form.estimate_hours, hint="Used to weight progress. Leave empty to count every task equally.") }}
+    </div></div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">{{ icon("save") }} {{ "Save" if task else "Add" }}</button>
+    {% if not task %}<button class="btn btn-soft" type="submit" name="again" value="1">{{ icon("plus") }} Add and add another</button>{% endif %}
+    <a class="btn btn-soft" href="{{ url_for('workspace.task', task_id=task.id) if task else url_for('workspace.project_tasks', project_id=project.id) }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

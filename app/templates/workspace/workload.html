@@ -1,0 +1,31 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, progress_bar %}
+{% block title %}Workload{% endblock %}
+{% block page_title %}Workload{% endblock %}
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon">{{ icon("users") }}</span>People</div><div class="kpi-value">{{ rows|length }}</div><div class="kpi-foot">Active team members</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon red">{{ icon("flame") }}</span>Over capacity</div><div class="kpi-value">{{ over }}</div><div class="kpi-foot">Over 100% allocated or loaded</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon green">{{ icon("leaf") }}</span>Room for more</div><div class="kpi-value">{{ free }}</div><div class="kpi-foot">Under 50% on both</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("clock") }}</span>Hours logged</div><div class="kpi-value">{{ rows|sum(attribute="logged_7d")|qty }}</div><div class="kpi-foot">Last 7 days, everyone</div></div></div>
+</div>
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("gauge-circle") }} Who's doing what</h2>
+    <p class="panel-sub"><b>Allocated</b> is the share of the week project managers have booked on open projects. <b>Next 4 weeks</b> is the remaining estimated work on tasks due soon, against weekly capacity.</p></div></div>
+  {% if rows %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Person</th><th>Allocated</th><th>Next 4 weeks</th><th class="num">Open tasks</th><th class="num">Overdue</th><th class="num">Logged (7 days)</th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr class="{{ 'over-row' if r.over }}">
+        <td><div class="cell-user"><span class="avatar sm" translate="no">{{ r.user.initials }}</span><div><a class="name fw-semibold d-block" href="{{ url_for('workspace.member', user_id=r.user.id) }}" translate="no">{{ r.user.full_name }}</a>
+          <div class="sub">{% for p, pct in r.projects %}<span class="nowrap">{{ p.code }} {{ pct }}%</span>{{ " · " if not loop.last }}{% else %}No open projects{% endfor %}</div></div></div></td>
+        <td class="progress-cell"><div class="meter {{ 'warn' if r.allocation > 100 }}"><span data-width="{{ r.allocation if r.allocation <= 100 else 100 }}"></span></div><div class="small {{ 'text-danger fw-semibold' if r.allocation > 100 else 'text-3' }}">{{ r.allocation }}%</div></td>
+        <td class="progress-cell"><div class="meter {{ 'warn' if r.load > 100 }}"><span data-width="{{ r.load if r.load <= 100 else 100 }}"></span></div><div class="small {{ 'text-danger fw-semibold' if r.load > 100 else 'text-3' }}">{{ r.planned_hours|qty }} h of {{ r.capacity|qty }} h · {{ r.load }}%</div></td>
+        <td class="num">{{ r.open_tasks }}</td>
+        <td class="num">{% if r.overdue %}<span class="chip red">{{ r.overdue }}</span>{% else %}0{% endif %}</td>
+        <td class="num">{{ r.logged_7d|qty }} h</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">No active people.</div>{% endif %}
+</div>
+{% endblock %}

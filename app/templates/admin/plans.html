@@ -1,0 +1,23 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Plans{% endblock %}
+{% block page_title %}Subscription plans{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("layers") }} Packages</h2><p class="panel-sub">Changes apply straight away to the pricing page, sign-up form and every subscriber's limits.</p></div>
+    <a class="btn btn-primary" href="{{ url_for('admin.plan_new') }}">{{ icon("plus") }} New plan</a></div>
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Plan</th><th>Monthly</th><th>Annual</th><th>Users</th><th>Projects</th><th>Storage</th><th>Subscribers</th><th>Status</th><th></th></tr></thead>
+    <tbody>{% for p in plans %}
+      <tr><td><div class="fw-semibold">{{ p.name }}</div><div class="small text-3">{{ p.audience }}</div></td>
+        <td class="num">{{ p.price_monthly|money(p.currency) }}</td><td class="num">{{ p.price_annual|money(p.currency) }}</td>
+        <td class="num">{{ p.max_users if p.max_users is not none else "Unlimited" }}</td>
+        <td class="num">{{ p.max_projects if p.max_projects is not none else "Unlimited" }}</td>
+        <td class="num">{{ ((p.max_storage_mb / 1024)|round|int ~ " GB") if p.max_storage_mb else "Custom" }}</td>
+        <td class="num">{{ counts.get(p.id, 0) }}</td>
+        <td>{% if p.is_active %}<span class="chip green"><span class="dot"></span>Active</span>{% else %}<span class="chip">Retired</span>{% endif %}{% if not p.is_public %} <span class="chip">Not listed</span>{% endif %}</td>
+        <td><a class="btn btn-soft btn-sm" href="{{ url_for('admin.plan_edit', plan_id=p.id) }}">{{ icon("pencil") }} Edit</a></td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

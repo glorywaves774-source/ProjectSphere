@@ -1,0 +1,85 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, risk_level, issue_status %}
+{% block title %}{{ r.code }} · {{ r.title }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_risks', project_id=r.project_id) }}">{{ r.project.code }} risks</a> · {{ r.code }}{% endblock %}
+{% block page_title %}<span translate="no">{{ r.title }}</span>{% endblock %}
+{% block content %}
+{% if r.review_overdue %}<div class="announce warning">{{ icon("alarm-clock") }}<span>This risk was due for review on {{ r.review_date.strftime("%d %b %Y") }}.</span></div>{% endif %}
+{% if r.status == "occurred" %}<div class="announce warning">{{ icon("circle-alert") }}<span>This risk happened and is being handled as {% for i in r.issues %}<a href="{{ url_for('workspace.issue', issue_id=i.id) }}">{{ i.code }}</a>{{ ", " if not loop.last }}{% endfor %}.</span></div>{% endif %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        {{ risk_level(r) }}<span class="chip">{{ r.category_label }}</span><span class="chip">{{ r.status_label }}</span>
+        {% if can_manage %}<div class="ms-auto"><a class="btn btn-soft btn-sm" href="{{ url_for('workspace.risk_edit', risk_id=r.id) }}">{{ icon("pencil") }} Edit</a></div>{% endif %}
+      </div>
+      <div class="risk-meter mt-3">
+        <div><span class="small text-3">Likelihood</span><div class="fw-semibold">{{ r.likelihood }} of 5</div></div>
+        <span class="text-3">×</span>
+        <div><span class="small text-3">Impact</span><div class="fw-semibold">{{ r.impact }} of 5</div></div>
+        <span class="text-3">=</span>
+        <div><span class="small text-3">Score</span><div class="fw-semibold">{{ r.score }} · {{ r.level_label }}</div></div>
+      </div>
+      {% for label, text in [("Cause and consequence", r.description), ("Mitigation plan", r.mitigation), ("Contingency plan", r.contingency), ("Closure note", r.closure_note)] %}
+        {% if text %}<h3 class="dep-head mt-3">{{ label }}</h3><div class="prose" translate="no">{{ text }}</div>{% endif %}
+      {% endfor %}
+    </div>
+
+    {% if can_review %}
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("refresh-cw") }} Review this risk</h2><p class="panel-sub">Reassess it regularly; every review is kept below.</p></div></div>
+      <form method="post" novalidate>
+        {{ rform.hidden_tag() }}<input type="hidden" name="action" value="review">
+        <div class="row g-3">
+          <div class="col-6 col-md-4">{{ field(rform.likelihood) }}</div>
+          <div class="col-6 col-md-4">{{ field(rform.impact) }}</div>
+          <div class="col-md-4">{{ field(rform.next_review) }}</div>
+        </div>
+        {{ field(rform.note, placeholder="e.g. Contractor confirmed a second rig; delay now less likely") }}
+        <button class="btn btn-primary" type="submit">{{ icon("save") }} Record review</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("history") }} History</h2></div>
+      {% if r.reviews %}<ol class="timeline">{% for v in r.reviews %}
+        <li><span class="risk-score sm level-{{ v.level }}" aria-hidden="true">{{ v.score }}</span>
+          <div class="timeline-body"><div class="thread-meta"><span class="who" translate="no">{{ v.reviewed_by.full_name if v.reviewed_by else "Former user" }}</span><span class="when nowrap">{{ v.created_at|dt }}</span></div>
+            <div class="small text-3">Likelihood {{ v.likelihood }} × impact {{ v.impact }} = {{ v.score }}</div>
+            {% if v.note %}<div class="thread-body" translate="no">{{ v.note }}</div>{% endif %}</div></li>
+      {% endfor %}</ol>{% else %}<p class="text-3 mb-0">No reviews yet.</p>{% endif %}
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Details</h2></div>
+      <dl class="dl-grid one-col">
+        <div><dt>Project</dt><dd><a href="{{ url_for('workspace.project_risks', project_id=r.project_id) }}" translate="no">{{ r.project.name }}</a></dd></div>
+        <div><dt>Owner</dt><dd translate="no">{{ r.owner.full_name if r.owner else "Nobody yet" }}</dd></div>
+        <div><dt>Response</dt><dd>{{ r.response_label }}</dd></div>
+        <div><dt>Next review</dt><dd>{{ r.review_date.strftime("%d %b %Y") if r.review_date else "Not set" }}</dd></div>
+        <div><dt>Logged</dt><dd>{{ r.created_at|dt }}</dd></div>
+      </dl>
+    </div>
+    {% if can_manage and r.status == "open" %}
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("circle-alert") }} It has happened</h2><p class="panel-sub">Turn the risk into an issue to manage it</p></div></div>
+      <form method="post" novalidate>
+        {{ eform.hidden_tag() }}<input type="hidden" name="action" value="escalate">
+        {{ field(eform.priority) }}{{ field(eform.assignee_id) }}{{ field(eform.due_date) }}{{ field(eform.description) }}
+        <button class="btn btn-danger-soft w-100" type="submit">{{ icon("circle-alert") }} Log as issue</button>
+      </form>
+    </div>
+    <div class="panel">
+      <form method="post" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="close">
+        <label class="form-label" for="close-note">Close this risk</label>
+        <textarea class="form-control mb-2" id="close-note" name="note" rows="2" maxlength="5000" placeholder="Why it no longer applies"></textarea>
+        <button class="btn btn-soft w-100" type="submit">{{ icon("circle-check") }} Close risk</button></form>
+    </div>
+    {% elif can_manage and r.status == "closed" %}
+    <div class="panel"><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="reopen"><button class="btn btn-soft w-100" type="submit">{{ icon("rotate-ccw") }} Reopen risk</button></form></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

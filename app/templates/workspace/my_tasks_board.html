@@ -1,0 +1,25 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, task_priority, task_due, progress_bar %}
+{% block title %}My tasks{% endblock %}
+{% block page_title %}{{ "Tasks to approve" if tab == "review" else "My tasks" }}{% endblock %}
+{% block content %}
+<div class="panel">{% include "partials/my_tasks_head.html" %}</div>
+<div class="board" aria-label="Tasks by status">
+  {% for key, label, items in columns %}
+  <section class="board-col">
+    <header class="board-col-head"><span class="board-dot t-{{ key }}"></span>{{ label }}<span class="count">{{ items|length }}</span></header>
+    <div class="board-cards">
+      {% for t in items %}
+      <a class="board-card" href="{{ url_for('workspace.task', task_id=t.id) }}">
+        <div class="d-flex justify-content-between gap-2"><span class="code small text-3">{{ t.project.code }}</span>{{ task_priority(t) }}</div>
+        <div class="fw-semibold mt-1" translate="no">{% if t.is_milestone %}◆ {% endif %}{{ t.title }}</div>
+        <div class="small text-3" translate="no">{{ t.project.name }}</div>
+        {% if not t.is_milestone %}<div class="mt-2">{{ progress_bar(100 if t.is_done else t.progress) }}</div>{% endif %}
+        <div class="small mt-2">Due {{ task_due(t) }}</div>
+      </a>
+      {% else %}<div class="board-empty">Nothing here</div>{% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

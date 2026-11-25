@@ -1,0 +1,41 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}My account{% endblock %}
+{% block page_title %}My account{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="panel h-100">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("user-round") }} Profile</h2></div>
+      <form method="post" novalidate>
+        {{ profile.hidden_tag() }}<input type="hidden" name="form" value="profile">
+        <div class="mb-3"><label class="form-label" for="email-ro">Email</label><input id="email-ro" class="form-control" value="{{ current_user.email }}" disabled translate="no"></div>
+        {{ field(profile.full_name, autocomplete="name") }}
+        {{ field(profile.job_title, autocomplete="organization-title") }}
+        {{ field(profile.phone, autocomplete="tel") }}
+        <button class="btn btn-primary" type="submit">{{ icon("save") }} Save profile</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("mail") }} Email notifications</h2><p class="panel-sub">Sent to {{ current_user.email }}</p></div></div>
+      <form method="post" class="notify-toggle"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="form" value="notify">
+        <label class="form-check mb-0 flex-fill"><input class="form-check-input" type="checkbox" name="email_notify" value="y" {{ "checked" if current_user.email_notify }} data-autosubmit>
+          <span class="form-check-label">Email me when something needs me: assignments, approvals, messages, meetings, reminders and announcements</span></label>
+        <noscript><button class="btn btn-soft btn-sm" type="submit">Save</button></noscript>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("key-round") }} Password</h2><p class="panel-sub">Changing it signs you out on your other devices.</p></div></div>
+      <form method="post" novalidate>
+        {{ pw.hidden_tag() }}<input type="hidden" name="form" value="password">
+        {{ field(pw.current_password, autocomplete="current-password") }}
+        {{ field(pw.new_password, autocomplete="new-password", hint="10+ characters with upper and lower case and a number.") }}
+        {{ field(pw.confirm, autocomplete="new-password") }}
+        <button class="btn btn-primary" type="submit">{{ icon("lock") }} Change password</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

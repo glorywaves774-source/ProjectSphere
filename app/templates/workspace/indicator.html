@@ -1,0 +1,109 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, me_status, num %}
+{% block title %}{{ ind.code }} · {{ ind.name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_me', project_id=project.id) }}">{{ project.code }} M&amp;E</a>{% if ind.result %} · {{ ind.result.code }}{% endif %}{% endblock %}
+{% block page_title %}<span translate="no">{{ ind.name }}</span>{% endblock %}
+{% block content %}
+{% if not ind.is_active %}<div class="announce warning">{{ icon("archive") }}<span>This indicator is retired. Its history is kept, but no new results can be reported.</span></div>{% endif %}
+{% if p.overdue %}<div class="announce warning">{{ icon("hourglass") }}<span>Data for this indicator was due on {{ p.next_due.strftime("%d %b %Y") }}.</span></div>{% endif %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon">{{ icon("flag") }}</span>Baseline</div><div class="kpi-value">{{ num(ind.baseline_value, ind.is_percent) }}</div><div class="kpi-foot">{{ ind.baseline_date.strftime("%d %b %Y") }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon green">{{ icon("target") }}</span>Target</div><div class="kpi-value">{{ num(ind.target_value, ind.is_percent) }}</div><div class="kpi-foot">by {{ ind.target_date.strftime("%d %b %Y") }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("activity") }}</span>Actual</div><div class="kpi-value">{{ num(p.actual, ind.is_percent) }}</div><div class="kpi-foot">{{ ("as of " ~ p.actual_date.strftime("%d %b %Y")) if p.actual_date else "No verified result yet" }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon amber">{{ icon("gauge") }}</span>Achieved</div><div class="kpi-value">{{ p.achievement ~ "%" if p.achievement is not none else "—" }}</div><div class="kpi-foot">{{ p.expected }}% of the time has passed</div></div></div>
+</div>
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("chart-line") }} Progress over time</h2>{{ me_status(p) }}</div>
+      <div class="chart-box"><canvas data-chart="line" data-source="c-ind" role="img" aria-label="Actual values against the target"></canvas></div>
+      <script type="application/json" id="c-ind">{{ chart|tojson }}</script>
+    </div>
+
+    {% set to_review = ind.values|selectattr("status", "equalto", "pending")|rejectattr("reported_by_id", "equalto", current_user.id)|list if can_verify else [] %}
+    {% if to_review %}
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("badge-check") }} Waiting for your verification</h2><p class="panel-sub">Check each result against its source before it counts.</p></div></div>
+      {% for v in to_review %}
+      <div class="review-card">
+        <div class="d-flex flex-wrap gap-3 align-items-baseline">
+          <span class="ind-pct">{{ num(v.value, ind.is_percent) }}</span>
+          <span>for the period ending <b>{{ v.period_end.strftime("%d %b %Y") }}</b></span>
+          <span class="small text-3">reported by <span translate="no">{{ v.reported_by.full_name if v.reported_by else "Former user" }}</span>, {{ v.created_at|dt }}</span>
+        </div>
+        {% if v.source or v.notes %}<div class="small text-2 mt-1" translate="no">{% if v.source %}<b>Source:</b> {{ v.source }}{% endif %}{% if v.source and v.notes %} · {% endif %}{{ v.notes }}</div>{% endif %}
+        <form method="post" class="review-row mt-2" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="value" value="{{ v.id }}">
+          <input class="form-control" type="text" name="r-note" maxlength="500" placeholder="Note (needed to reject)" aria-label="Review note">
+          <button class="btn btn-primary" type="submit" name="action" value="verify">{{ icon("check") }} Verify</button>
+          <button class="btn btn-soft" type="submit" name="action" value="reject">{{ icon("x") }} Reject</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if can_report %}
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("plus-circle") }} Report a result</h2>
+        <p class="panel-sub">{% if can_verify %}Results you record are verified straight away.{% else %}The M&amp;E team checks each result before it counts.{% endif %}{% if p.next_due %} Next data due {{ p.next_due.strftime("%d %b %Y") }}.{% endif %}</p></div></div>
+      <form method="post" novalidate>
+        {{ vform.hidden_tag() }}<input type="hidden" name="action" value="record">
+        <div class="row g-3">
+          <div class="col-6 col-md-4">{{ field(vform.period_end) }}</div>
+          <div class="col-6 col-md-3">{{ field(vform.value, hint=("0–100" if ind.is_percent else ind.unit) or None) }}</div>
+          <div class="col-md-5">{{ field(vform.source, hint=vform.source.description) }}</div>
+        </div>
+        {{ field(vform.notes) }}
+        <button class="btn btn-primary" type="submit">{{ icon("send") }} {{ "Record" if can_verify else "Send for verification" }}</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("list") }} Reported results</h2></div>
+      {% if ind.values %}
+      <div class="table-wrap"><table class="table-ps">
+        <thead><tr><th>Period ending</th><th class="num">Value</th><th>Status</th><th>Reported by</th><th></th></tr></thead>
+        <tbody>{% for v in ind.values %}
+          <tr class="{{ 'muted' if v.status == 'rejected' }}"><td class="date">{{ v.period_end.strftime("%d %b %Y") }}</td>
+            <td class="num fw-semibold">{{ num(v.value, ind.is_percent) }}</td>
+            <td><span class="chip {{ {'pending': 'amber', 'verified': 'green', 'rejected': 'red'}[v.status] }}">{{ v.status_label }}</span>
+              {% if v.review_note %}<div class="small text-3 mt-1" translate="no">{{ v.review_note }}</div>{% endif %}</td>
+            <td><span class="nowrap" translate="no">{{ v.reported_by.full_name if v.reported_by else "Former user" }}</span>
+              {% if v.source or v.notes %}<div class="small text-3" translate="no">{{ v.source }}{% if v.source and v.notes %} · {% endif %}{{ v.notes|truncate(120) }}</div>{% endif %}</td>
+            <td class="text-end nowrap">
+              {% if can_manage or (v.status == "pending" and v.reported_by_id == current_user.id) %}
+              <form method="post" class="d-inline" data-confirm="Tap again to remove"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_value"><input type="hidden" name="value" value="{{ v.id }}"><button class="icon-btn sm" type="submit" aria-label="Remove result">{{ icon("trash-2") }}</button></form>
+              {% endif %}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% else %}<div class="empty">{{ icon("list") }}<div>No results reported yet.</div></div>{% endif %}
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Definition</h2>
+        {% if can_manage %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.indicator_edit', indicator_id=ind.id) }}">{{ icon("pencil") }} Edit</a>{% endif %}</div>
+      <dl class="dl-grid one-col">
+        <div><dt>Code</dt><dd class="code">{{ ind.code }}</dd></div>
+        <div><dt>Measures</dt><dd>{% if ind.result %}<span translate="no">{{ ind.result.code }} · {{ ind.result.statement }}</span>{% else %}Not linked to a result{% endif %}</dd></div>
+        {% if ind.definition %}<div><dt>How it's calculated</dt><dd class="prose" translate="no">{{ ind.definition }}</dd></div>{% endif %}
+        <div><dt>Measured as</dt><dd>{{ "Percentage" if ind.is_percent else "Number" }}{% if ind.unit %} · <span translate="no">{{ ind.unit }}</span>{% endif %} · {{ "higher is better" if ind.direction == "increase" else "lower is better" }}</dd></div>
+        <div><dt>Collected</dt><dd>{{ ind.frequency_label }}</dd></div>
+        <div><dt>Responsible</dt><dd translate="no">{{ ind.responsible.full_name if ind.responsible else "Nobody yet" }}</dd></div>
+        {% if ind.data_source %}<div><dt>Means of verification</dt><dd class="prose" translate="no">{{ ind.data_source }}</dd></div>{% endif %}
+        {% if ind.disaggregation %}<div><dt>Disaggregated by</dt><dd translate="no">{{ ind.disaggregation }}</dd></div>{% endif %}
+        {% if ind.endline_value is not none %}<div><dt>Endline</dt><dd>{{ num(ind.endline_value, ind.is_percent) }} on {{ ind.endline_date.strftime("%d %b %Y") }}</dd></div>{% endif %}
+      </dl>
+      {% if can_manage %}
+      <div class="d-flex gap-2 flex-wrap mt-2">
+        <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="{{ 'retire' if ind.is_active else 'reactivate' }}"><button class="btn btn-soft btn-sm" type="submit">{{ icon("archive" if ind.is_active else "archive-restore") }} {{ "Retire" if ind.is_active else "Reactivate" }}</button></form>
+        <form method="post" data-confirm="Tap again to delete"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><button class="btn btn-danger-soft btn-sm" type="submit">{{ icon("trash-2") }} Delete</button></form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

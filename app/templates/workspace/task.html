@@ -1,0 +1,119 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, task_status, task_priority, progress_bar %}
+{% block title %}{{ task.title }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_tasks', project_id=project.id) }}"><span translate="no">{{ project.name }}</span></a>{% if task.parent %} · <a href="{{ url_for('workspace.task', task_id=task.parent_id) }}" translate="no">{{ task.parent.title }}</a>{% endif %}{% endblock %}
+{% block page_title %}{% if task.is_milestone %}<span class="ms-icon">{{ icon("diamond") }}</span> {% endif %}<span translate="no">{{ task.title }}</span>{% endblock %}
+{% block content %}
+{% if task.status == "review" and can_approve %}
+<div class="announce warning">{{ icon("hourglass") }}<span>This task is waiting for your approval.</span></div>
+{% endif %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        {{ task_status(task) }}{{ task_priority(task) }}
+        {% if task.is_overdue %}<span class="chip red">{{ icon("alarm-clock") }} Overdue</span>{% endif %}
+        {% if task.requires_approval %}<span class="chip">{{ icon("badge-check") }} Needs approval</span>{% endif %}
+        {% if can_plan and project.is_open %}
+        <div class="ms-auto d-flex gap-2">
+          <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.task_edit', task_id=task.id) }}">{{ icon("pencil") }} Edit</a>
+          <form method="post" data-confirm="Tap again to delete"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><button class="btn btn-danger-soft btn-sm" type="submit">{{ icon("trash-2") }}<span class="label-wide"> Delete</span></button></form>
+        </div>
+        {% endif %}
+      </div>
+      {% if not task.is_milestone %}<div class="mt-3">{{ progress_bar(100 if task.is_done else task.progress) }}</div>{% endif %}
+      {% if task.description %}<div class="prose mt-3" translate="no">{{ task.description }}</div>{% endif %}
+      {% if task.approved_by %}<p class="small text-3 mt-3 mb-0">{{ icon("badge-check") }} Approved by <span translate="no">{{ task.approved_by.full_name }}</span> on {{ task.approved_at|dt }}</p>{% endif %}
+    </div>
+
+    {% if task.status == "review" and can_approve and project.is_open %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("badge-check") }} Review</h2></div>
+      <form method="post" novalidate>
+        {{ review_form.hidden_tag() }}
+        {{ field(review_form.note, placeholder="Optional for approval; required when sending back") }}
+        <div class="form-actions mt-0">
+          <button class="btn btn-primary" type="submit" name="action" value="approve">{{ icon("thumbs-up") }} Approve</button>
+          <button class="btn btn-soft" type="submit" name="action" value="return">{{ icon("undo-2") }} Send back</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if can_work and project.is_open %}
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("refresh-cw") }} Update</h2>
+        {% if waiting %}<p class="panel-sub">{{ icon("link-2") }} Waiting for: {% for w in waiting %}<a href="{{ url_for('workspace.task', task_id=w.id) }}" translate="no">{{ w.title }}</a>{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}</div></div>
+      <form method="post" novalidate>
+        {{ status_form.hidden_tag() }}<input type="hidden" name="action" value="status">
+        <div class="row g-3">
+          <div class="col-sm-6">{{ field(status_form.status, hint="Finishing a task that needs approval sends it for review." if task.requires_approval and not can_approve else None) }}</div>
+          {% if not task.is_milestone and not task.children %}<div class="col-sm-6">{{ field(status_form.progress) }}</div>{% endif %}
+        </div>
+        {{ field(status_form.note) }}
+        <button class="btn btn-primary" type="submit">{{ icon("save") }} Update</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("messages-square") }} Comments</h2></div>
+      {% if task.comments %}
+      <ol class="timeline">{% for c in task.comments %}
+        <li><span class="avatar sm" translate="no">{{ c.author.initials if c.author else "?" }}</span>
+          <div class="timeline-body"><div class="thread-meta"><span class="who" translate="no">{{ c.author.full_name if c.author else "Former user" }}</span><span class="when nowrap">{{ c.created_at|dt }}</span></div>
+            <div class="thread-body" translate="no">{{ c.body }}</div></div></li>
+      {% endfor %}</ol>
+      {% else %}<p class="text-3">No comments yet.</p>{% endif %}
+      {% if can_comment %}
+      <form method="post" class="mt-3" novalidate>
+        {{ comment_form.hidden_tag() }}<input type="hidden" name="action" value="comment">
+        {{ field(comment_form.body, placeholder="Ask a question or share an update…") }}
+        <button class="btn btn-soft" type="submit">{{ icon("send") }} Comment</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Details</h2></div>
+      <dl class="dl-grid one-col">
+        <div><dt>Project</dt><dd><a href="{{ url_for('workspace.project', project_id=project.id) }}" translate="no">{{ project.name }}</a></dd></div>
+        <div><dt>Assigned to</dt><dd translate="no">{{ task.assignee.full_name if task.assignee else "Unassigned" }}</dd></div>
+        <div><dt>{{ "Date" if task.is_milestone else "Dates" }}</dt><dd>{% if task.is_milestone %}{{ task.due_date.strftime("%d %b %Y") if task.due_date else "Not set" }}{% else %}{{ task.start_date.strftime("%d %b %Y") if task.start_date else "?" }} → {{ task.due_date.strftime("%d %b %Y") if task.due_date else "?" }}{% endif %}</dd></div>
+        {% if task.estimate_hours or logged %}<div><dt>Time</dt><dd>{{ logged|qty if logged else 0 }} h logged{% if task.estimate_hours %} of {{ task.estimate_hours|qty }} h estimated{% endif %}
+          {% if task.estimate_hours and logged and logged > task.estimate_hours %}<div class="small text-danger">{{ (logged - task.estimate_hours)|qty }} h over the estimate</div>{% endif %}</dd></div>{% endif %}
+        {% if task.completed_at %}<div><dt>Completed</dt><dd>{{ task.completed_at|dt }}</dd></div>{% endif %}
+      </dl>
+    </div>
+    {% if task.children %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("list-tree") }} Sub-tasks</h2></div>
+      <ul class="activity-list">{% for c in task.children %}
+        <li><span class="check {{ 'done' if c.is_done }}">{{ icon("check") }}</span><div class="activity-body"><a class="what d-block" href="{{ url_for('workspace.task', task_id=c.id) }}" translate="no">{{ c.title }}</a><div class="meta">{{ c.status_label }}{% if c.assignee %} · <span translate="no">{{ c.assignee.full_name }}</span>{% endif %}</div></div></li>
+      {% endfor %}</ul>
+    </div>
+    {% endif %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("link-2") }} Dependencies</h2></div>
+      <h3 class="dep-head">Waits for</h3>
+      {% if deps_in %}<ul class="dep-list">{% for d in deps_in %}
+        <li><span class="check {{ 'done' if d.predecessor.is_done }}">{{ icon("check") }}</span><a href="{{ url_for('workspace.task', task_id=d.predecessor_id) }}" translate="no">{{ d.predecessor.title }}</a>
+          {% if can_plan and project.is_open %}<form method="post" class="ms-auto"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="remove_dependency"><input type="hidden" name="dep" value="{{ d.id }}"><button class="icon-btn sm" type="submit" aria-label="Remove dependency">{{ icon("x") }}</button></form>{% endif %}</li>
+      {% endfor %}</ul>{% else %}<p class="small text-3">Nothing. This task can start any time.</p>{% endif %}
+      <h3 class="dep-head">Blocks</h3>
+      {% if deps_out %}<ul class="dep-list">{% for d in deps_out %}
+        <li><span class="check {{ 'done' if d.successor.is_done }}">{{ icon("check") }}</span><a href="{{ url_for('workspace.task', task_id=d.successor_id) }}" translate="no">{{ d.successor.title }}</a></li>
+      {% endfor %}</ul>{% else %}<p class="small text-3">No other task waits for this one.</p>{% endif %}
+      {% if can_plan and project.is_open and dep_form.predecessor_id.choices %}
+      <form method="post" class="mt-3" novalidate>
+        {{ dep_form.hidden_tag() }}<input type="hidden" name="action" value="dependency">
+        {{ field(dep_form.predecessor_id, hint="This task can't be finished until the chosen task is done.") }}
+        <button class="btn btn-soft w-100" type="submit">{{ icon("link-2") }} Add dependency</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

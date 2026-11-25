@@ -1,0 +1,21 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, ticket_status %}
+{% block title %}{{ ticket.reference }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.support') }}">Help & support</a> · {{ ticket.reference }}{% endblock %}
+{% block page_title %}{{ ticket.subject }}{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <div class="panel-head"><div class="d-flex gap-2 flex-wrap">{{ ticket_status(ticket) }}<span class="chip">{{ ticket.category_label }}</span></div>
+    {% if ticket.is_open %}
+    <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="close"><button class="btn btn-soft btn-sm" type="submit">{{ icon("check") }} Mark as solved</button></form>
+    {% endif %}</div>
+  {% with messages=ticket.public_messages(), staff_view=false %}{% include "partials/thread.html" %}{% endwith %}
+</div>
+<div class="panel narrow-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}<input type="hidden" name="action" value="reply">
+    {{ field(form.body, hint=None if ticket.is_open else "Replying reopens this request.") }}
+    <button class="btn btn-primary" type="submit">{{ icon("send") }} Send reply</button>
+  </form>
+</div>
+{% endblock %}

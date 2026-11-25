@@ -1,0 +1,23 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}Upload a document{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.documents') }}">Documents</a>{% endblock %}
+{% block page_title %}Upload a document{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.file, hint="Up to " ~ max_mb ~ " MB. Allowed: " ~ extensions ~ ". Macro-enabled Office files are refused.") }}
+    {{ field(form.title, hint=form.title.description) }}
+    <div class="row g-3">
+      <div class="col-sm-6">{{ field(form.category) }}</div>
+      <div class="col-sm-6">{{ field(form.project_id) }}</div>
+    </div>
+    {{ field(form.description) }}
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("upload") }} Upload</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.documents') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

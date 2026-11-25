@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Platform settings{% endblock %}
+{% block page_title %}Platform settings{% endblock %}
+{% block content %}
+<form method="post" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="panel">
+    <div class="panel-head"><div><h2 class="panel-title">{{ icon("settings") }} Settings for the whole platform</h2><p class="panel-sub">Every change is recorded in the audit log.</p></div></div>
+    <div class="row g-3">
+    {% for d in defs %}
+      <div class="{{ 'col-12' if d.key == 'announcement' else 'col-md-6' }}">
+        {% if d.kind == "bool" %}
+        <div class="form-check form-switch mb-1 mt-md-4">
+          <input class="form-check-input" type="checkbox" role="switch" id="{{ d.key }}" name="{{ d.key }}" {{ "checked" if values[d.key] == "true" }}>
+          <label class="form-check-label fw-semibold" for="{{ d.key }}">{{ d.label }}</label>
+        </div>
+        {% else %}
+        <label class="form-label" for="{{ d.key }}">{{ d.label }}</label>
+        {% if d.kind == "choice" %}
+        <select class="form-select {{ 'is-invalid' if errors[d.key] }}" id="{{ d.key }}" name="{{ d.key }}">
+          {% for v, l in d.choices %}<option value="{{ v }}" {{ "selected" if values[d.key] == v }}>{{ l }}</option>{% endfor %}
+        </select>
+        {% else %}
+        <input class="form-control {{ 'is-invalid' if errors[d.key] }}" id="{{ d.key }}" name="{{ d.key }}" value="{{ values[d.key] }}"
+          type="{{ 'email' if d.kind == 'email' else ('number' if d.kind == 'int' else 'text') }}" {% if d.kind == "int" %}min="0" max="365" inputmode="numeric"{% endif %} maxlength="300">
+        {% endif %}
+        {% endif %}
+        {% if errors[d.key] %}<div class="invalid-feedback">{{ errors[d.key] }}</div>{% endif %}
+        {% if d.help %}<div class="form-hint">{{ d.help }}</div>{% endif %}
+      </div>
+    {% endfor %}
+    </div>
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">{{ icon("save") }} Save settings</button></div>
+</form>
+{% endblock %}

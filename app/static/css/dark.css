@@ -1,0 +1,70 @@
+/* Dark theme: variable overrides plus hand-tuned surfaces. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ps-bg: #070b1a;
+  --ps-bg-glow-1: rgba(109, 91, 246, .20);
+  --ps-bg-glow-2: rgba(47, 124, 246, .14);
+  --ps-surface: rgba(20, 27, 52, .72);
+  --ps-surface-solid: #121a35;
+  --ps-surface-2: rgba(30, 39, 72, .7);
+  --ps-border: rgba(148, 163, 230, .12);
+  --ps-border-strong: rgba(148, 163, 230, .22);
+  --ps-glass-edge: rgba(148, 163, 230, .14);
+  --ps-text: #eef1ff;
+  --ps-text-2: #c2c9e8;
+  --ps-text-3: #9aa5cf;
+  --ps-shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --ps-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 16px 40px -12px rgba(0, 0, 0, .55);
+  --ps-shadow-lg: 0 28px 70px -18px rgba(0, 0, 0, .75);
+  --ps-neu-bg: #11182f;
+  --ps-neu-dark: rgba(0, 0, 0, .55);
+  --ps-neu-light: rgba(54, 66, 112, .35);
+  --ps-purple-600: #a99cff;
+  --ps-blue-600: #7fb0ff;
+
+  --bs-body-color: var(--ps-text);
+  --bs-body-bg: var(--ps-bg);
+  --bs-link-color: #a99cff;
+  --bs-link-color-rgb: 169, 156, 255;
+  --bs-link-hover-color: #c4bbff;
+  --bs-border-color: var(--ps-border-strong);
+  --bs-secondary-color: var(--ps-text-3);
+  --bs-tertiary-bg: var(--ps-surface-2);
+}
+[data-theme="dark"] .sidebar { background: linear-gradient(180deg, #0a1028 0%, #050816 100%); border-right-color: rgba(148, 163, 230, .08); }
+[data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background-color: #0d1430; color: var(--ps-text); }
+[data-theme="dark"] .form-control::placeholder { color: #7480ad; }
+[data-theme="dark"] .form-select { --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23c2c9e8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); }
+[data-theme="dark"] .neu-card .form-control, [data-theme="dark"] .neu-card .form-select { background-color: var(--ps-neu-bg); }
+[data-theme="dark"] .chip.green { color: #6ee7a0; }
+[data-theme="dark"] .chip.amber { color: #fcc96b; }
+[data-theme="dark"] .chip.red { color: #fca5a5; }
+[data-theme="dark"] .chip.purple { color: #c4bbff; }
+[data-theme="dark"] .chip.blue { color: #9cc3ff; }
+[data-theme="dark"] .table-ps tbody tr:hover td { background: rgba(169, 156, 255, .06); }
+[data-theme="dark"] .kpi-icon { background: rgba(169, 156, 255, .14); color: #b9adff; }
+[data-theme="dark"] .kpi-icon.blue { color: #8fbaff; }
+[data-theme="dark"] .kpi-icon.green { color: #5ee08f; }
+[data-theme="dark"] .kpi-icon.amber { color: #fbbf4b; }
+[data-theme="dark"] .kpi-icon.red { color: #f87171; }
+[data-theme="dark"] .panel-title svg, [data-theme="dark"] .activity-dot { color: #b9adff; }
+[data-theme="dark"] .hero-card { background: linear-gradient(135deg, #141c44, #0b1230 60%, #231a66); }
+[data-theme="dark"] .btn-danger-soft { color: #fca5a5; }
+[data-theme="dark"] .btn-success-soft { color: #6ee7a0; }
+[data-theme="dark"] .dropdown-menu { --bs-dropdown-bg: var(--ps-surface-solid); --bs-dropdown-color: var(--ps-text); --bs-dropdown-border-color: var(--ps-border); }
+[data-theme="dark"] .topbar { background: color-mix(in srgb, var(--ps-bg) 70%, transparent); }
+[data-theme="dark"] .bottom-tabs { background: color-mix(in srgb, #0b1230 86%, transparent); }
+[data-theme="dark"] .flash { background: #141c3a; }
+[data-theme="dark"] .text-muted { color: var(--ps-text-3) !important; }
+[data-theme="dark"] .announce { color: var(--ps-text); }
+[data-theme="dark"] .announce svg { color: #8fbaff; }
+[data-theme="dark"] .announce.warning svg { color: #fbbf4b; }
+[data-theme="dark"] .announce.success svg { color: #5ee08f; }
+[data-theme="dark"] .thread-msg.staff { background: rgba(169, 156, 255, .08); }
+[data-theme="dark"] .thread-msg.internal { background: rgba(251, 191, 75, .07); }
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.85); }
+[data-theme="dark"] .check-tile:has(input:checked), [data-theme="dark"] .perm-row:has(input:checked) { background: rgba(169, 156, 255, .1); border-color: #a99cff; }
+[data-theme="dark"] .g-bar.summary { background: rgba(194, 201, 232, .25); }
+[data-theme="dark"] .summary-row td { background: rgba(169, 156, 255, .05); }
+[data-theme="dark"] .ev { color: var(--ps-text); }
+[data-theme="dark"] .over-row td { background: rgba(248, 113, 113, .07); }

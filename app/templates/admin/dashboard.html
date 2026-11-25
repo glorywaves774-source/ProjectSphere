@@ -1,0 +1,76 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, sub_chip %}
+{% block title %}Platform overview{% endblock %}
+{% block page_title %}Platform overview{% endblock %}
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-xl-3"><div class="kpi">
+    <div class="kpi-label"><span class="kpi-icon">{{ icon("building") }}</span>Organizations</div>
+    <div class="kpi-value">{{ stats.orgs }}</div><div class="kpi-foot">{{ stats.new_30d }} new in the last 30 days</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi">
+    <div class="kpi-label"><span class="kpi-icon green">{{ icon("banknote") }}</span>Monthly revenue</div>
+    <div class="kpi-value">{% if mrr %}{% for cur, amt in mrr.items() %}{{ amt|money(cur) }}{% if not loop.last %} · {% endif %}{% endfor %}{% else %}{{ 0|money("GHS") }}{% endif %}</div>
+    <div class="kpi-foot">From {{ stats.active }} paying subscription{{ "s" if stats.active != 1 }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi">
+    <div class="kpi-label"><span class="kpi-icon blue">{{ icon("hourglass") }}</span>On trial</div>
+    <div class="kpi-value">{{ stats.trialing }}</div><div class="kpi-foot">{{ stats.past_due }} past due</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi">
+    <div class="kpi-label"><span class="kpi-icon amber">{{ icon("users") }}</span>Users</div>
+    <div class="kpi-value">{{ stats.users }}</div><div class="kpi-foot">{{ stats.suspended }} suspended organization{{ "s" if stats.suspended != 1 }}</div></div></div>
+</div>
+<div class="row g-4">
+  <div class="col-lg-7"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("trending-up") }} Sign-ups, last 6 months</h2></div>
+    <div class="chart-box"><canvas data-chart="bar" data-source="signup-chart" data-label="New organizations" role="img" aria-label="New organizations per month"></canvas></div>
+    <script type="application/json" id="signup-chart">{{ signup_chart|tojson }}</script>
+  </div></div>
+  <div class="col-lg-5"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("pie-chart") }} Plan mix</h2></div>
+    {% if plan_chart["values"]|sum %}
+    <div class="chart-box"><canvas data-chart="doughnut" data-source="plan-chart" role="img" aria-label="Organizations by plan"></canvas></div>
+    <script type="application/json" id="plan-chart">{{ plan_chart|tojson }}</script>
+    {% else %}<div class="empty">{{ icon("pie-chart") }}<div>No subscriptions yet.</div></div>{% endif %}
+  </div></div>
+</div>
+<div class="row g-4 mt-0">
+  <div class="col-lg-6"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("bell") }} Needs attention</h2></div>
+    {% if attention.trials_ending or attention.past_due %}
+    <ul class="activity-list">
+      {% for s in attention.trials_ending %}
+      <li><span class="activity-dot">{{ icon("hourglass") }}</span><div class="activity-body"><a class="what d-block" href="{{ url_for('admin.organization_detail', org_id=s.organization_id) }}" translate="no">{{ s.organization.name }}</a>
+        <div class="meta">Trial {{ "ended" if s.trial_ends_at < now_utc() else "ends" }} <span class="nowrap">{{ s.trial_ends_at|dt("%d %b %Y") }}</span> · {{ s.plan.name }}</div></div></li>
+      {% endfor %}
+      {% for s in attention.past_due %}
+      <li><span class="activity-dot">{{ icon("alert-triangle") }}</span><div class="activity-body"><a class="what d-block" href="{{ url_for('admin.organization_detail', org_id=s.organization_id) }}" translate="no">{{ s.organization.name }}</a>
+        <div class="meta">Past due · {{ s.plan.name }}</div></div></li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="empty">{{ icon("check-circle-2") }}<div>No trials ending this week and nobody past due.</div></div>{% endif %}
+  </div></div>
+  <div class="col-lg-6"><div class="panel h-100">
+    <div class="panel-head"><div><h2 class="panel-title">{{ icon("life-buoy") }} Support</h2><p class="panel-sub">{{ attention.open_tickets }} new request{{ "s" if attention.open_tickets != 1 }} waiting for a first look</p></div>
+      <a class="small fw-semibold" href="{{ url_for('admin.support') }}">Open desk</a></div>
+    {% if attention.tickets %}<ul class="activity-list">{% for t in attention.tickets %}
+      <li><span class="activity-dot">{{ icon("message-square") }}</span><div class="activity-body"><a class="what d-block" href="{{ url_for('admin.support_ticket', ticket_id=t.id) }}">{{ t.subject }}</a>
+        <div class="meta"><span translate="no">{{ t.organization.name }}</span> · {{ t.priority|capitalize }} · {{ t.status_label }}</div></div></li>
+    {% endfor %}</ul>
+    {% else %}<div class="empty">{{ icon("party-popper") }}<div>No open support requests.</div></div>{% endif %}
+  </div></div>
+</div>
+
+<div class="panel mt-4">
+  <div class="panel-head"><h2 class="panel-title">{{ icon("sparkles") }} Newest organizations</h2><a class="small fw-semibold" href="{{ url_for('admin.organizations') }}">View all</a></div>
+  {% if latest %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Organization</th><th>Plan</th><th>Status</th><th>Joined</th></tr></thead>
+    <tbody>{% for o in latest %}
+      <tr><td><a class="fw-semibold" href="{{ url_for('admin.organization_detail', org_id=o.id) }}" translate="no">{{ o.name }}</a><div class="small text-3">{{ o.type_label }} · {{ o.country }}</div></td>
+        <td class="nowrap">{{ o.subscription.plan.name if o.subscription else "—" }}</td>
+        <td>{{ sub_chip(o.subscription, o) }}</td>
+        <td class="date">{{ o.created_at|dt("%d %b %Y") }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">{{ icon("building") }}<div>No organizations have signed up yet.</div></div>{% endif %}
+</div>
+{% endblock %}

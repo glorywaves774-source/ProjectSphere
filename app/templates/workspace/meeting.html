@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ m.title }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.meetings') }}">Meetings</a>{% endblock %}
+{% block page_title %}<span translate="no">{{ m.title }}</span>{% endblock %}
+{% block content %}
+{% set local = m.starts_at.astimezone(tz) %}
+{% if m.cancelled %}<div class="announce warning">{{ icon("calendar-x") }}<span>This meeting was cancelled.</span></div>{% endif %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-3 align-items-center">
+        <div class="date-tile" aria-hidden="true"><span class="mon">{{ local.strftime("%b") }}</span><span class="day">{{ local.day }}</span></div>
+        <div><div class="fw-semibold">{{ local.strftime("%A %d %B %Y") }}</div><div class="text-3">{{ local.strftime("%H:%M") }} – {{ (local + timedelta(minutes=m.duration_min)).strftime("%H:%M") }} · {{ tz.key }}</div></div>
+        <div class="ms-auto d-flex gap-2 flex-wrap">
+          <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.meeting_ics', meeting_id=m.id) }}">{{ icon("calendar-plus") }} Add to calendar</a>
+          {% if can_edit and not m.cancelled %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.meeting_edit', meeting_id=m.id) }}">{{ icon("pencil") }} Edit</a>
+          <form method="post" data-confirm="Tap again to cancel the meeting"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="cancel"><button class="btn btn-danger-soft btn-sm" type="submit">{{ icon("x") }}<span class="label-wide"> Cancel meeting</span></button></form>{% endif %}
+        </div>
+      </div>
+      {% if m.location %}<p class="mt-3 mb-0">{{ icon("map-pin") }} {% if m.location.startswith("https://") %}<a href="{{ m.location }}" rel="noopener noreferrer" target="_blank" class="text-break" translate="no">{{ m.location }}</a>{% else %}<span translate="no">{{ m.location }}</span>{% endif %}</p>{% endif %}
+      {% if m.agenda %}<h3 class="dep-head mt-3">Agenda</h3><div class="prose" translate="no">{{ m.agenda }}</div>{% endif %}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("notebook-pen") }} Minutes</h2><p class="panel-sub">Decisions, action points and who owns them.</p></div></div>
+      {% if can_minutes %}
+      <form method="post" novalidate>
+        {{ mform.hidden_tag() }}<input type="hidden" name="action" value="minutes">
+        {{ mform.minutes(class_="form-control mb-3", rows=10, placeholder="Attendees present, decisions, action points…") }}
+        <button class="btn btn-primary" type="submit">{{ icon("save") }} Save minutes</button>
+      </form>
+      {% elif m.minutes %}<div class="prose" translate="no">{{ m.minutes }}</div>
+      {% else %}<p class="text-3 mb-0">No minutes recorded yet.</p>{% endif %}
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("users") }} Attendees</h2></div>
+      <ul class="people-list">{% for a in m.attendees|sort(attribute="user.full_name") %}
+        <li><span class="avatar sm" translate="no">{{ a.user.initials }}</span><span translate="no">{{ a.user.full_name }}</span>{% if a.user_id == m.organizer_id %}<span class="chip purple ms-auto">Organiser</span>{% endif %}</li>
+      {% endfor %}</ul>
+      {% if m.project %}<p class="small text-3 mt-3 mb-0">Project: <a href="{{ url_for('workspace.project', project_id=m.project_id) }}" translate="no">{{ m.project.name }}</a></p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

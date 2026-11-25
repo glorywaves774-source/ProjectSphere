@@ -1,0 +1,15 @@
+{% extends "layouts/base.html" %}
+{% from "partials/macros.html" import icon, theme_button, brand %}
+{% block title %}{{ title }}{% endblock %}
+{% block body_class %}no-tabs{% endblock %}
+{% block body %}
+<header class="public-nav">{{ brand("/") }}<div class="tools">{{ theme_button() }}</div></header>
+<main class="error-page" id="main">
+  <div class="panel p-5">
+    <div class="error-code gradient-text">{{ code }}</div>
+    <h1 class="h3 mt-3">{{ title }}</h1>
+    <p class="text-3">{{ message }}</p>
+    <a class="btn btn-primary" href="/">{{ icon("home") }} Go home</a>
+  </div>
+</main>
+{% endblock %}

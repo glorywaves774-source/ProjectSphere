@@ -1,0 +1,62 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, budget_status, progress_bar, expense_status %}
+{% block title %}Finance{% endblock %}
+{% block page_title %}Finance{% endblock %}
+{% block content %}
+{% set base = o.base %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon">{{ icon("wallet") }}</span>Budget, open projects</div>
+    <div class="kpi-value kpi-money">{{ o.total_budget|money(base) }}</div><div class="kpi-foot">{{ o.rows|length }} project{{ "s" if o.rows|length != 1 }}, in {{ base }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("receipt") }}</span>Spent</div>
+    <div class="kpi-value kpi-money">{{ o.total_spent|money(base) }}</div><div class="kpi-foot">{{ o.used_pct }}% budget utilisation</div></div></div>
+  <div class="col-6 col-xl-3"><a class="kpi kpi-link" href="{{ url_for('workspace.expenses', status='submitted') }}"><div class="kpi-label"><span class="kpi-icon amber">{{ icon("hourglass") }}</span>Awaiting approval</div>
+    <div class="kpi-value">{{ o.pending|length }}</div><div class="kpi-foot">Expense requests</div></a></div>
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon green">{{ icon("badge-check") }}</span>Budgets to approve</div>
+    <div class="kpi-value">{{ o.budgets_waiting|length }}</div><div class="kpi-foot">Submitted project budgets</div></div></div>
+</div>
+
+{% if o.missing %}<div class="announce warning">{{ icon("alert-triangle") }}<span>{{ o.missing|length }} project{{ "s use" if o.missing|length != 1 else " uses" }} a currency without an exchange rate ({{ o.missing|map(attribute="currency")|unique|join(", ") }}), so {{ "they're" if o.missing|length != 1 else "it's" }} left out of these totals. <a href="{{ url_for('workspace.exchange_rates') }}">Set exchange rates</a>.</span></div>{% endif %}
+
+{% if o.pending or o.budgets_waiting %}
+<div class="panel">
+  <div class="panel-head"><h2 class="panel-title">{{ icon("inbox") }} Waiting for a decision</h2></div>
+  <ul class="activity-list">
+    {% for p in o.budgets_waiting %}<li><span class="activity-dot">{{ icon("wallet") }}</span><div class="activity-body flex-fill"><a class="what d-block" href="{{ url_for('workspace.project_budget', project_id=p.id) }}">Budget: <span translate="no">{{ p.name }}</span></a><div class="meta">{{ p.code }}</div></div></li>{% endfor %}
+    {% for e in o.pending[:10] %}<li><span class="activity-dot">{{ icon("receipt") }}</span><div class="activity-body flex-fill"><a class="what d-block" href="{{ url_for('workspace.expense', expense_id=e.id) }}" translate="no">{{ e.description }}</a>
+      <div class="meta"><span class="code">{{ e.reference }}</span> · {{ e.project.code }} · by <span translate="no">{{ e.requested_by.full_name if e.requested_by else "—" }}</span>{% if e.over_budget %} · <span class="text-danger">over budget</span>{% endif %}</div></div>
+      <div class="fw-semibold nowrap">{{ e.amount|money(e.currency) }}</div></li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="row g-4 mt-0">
+  <div class="col-xl-7"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("trending-up") }} Spending per month ({{ base }})</h2></div>
+    {% if o.monthly.labels %}<div class="chart-box"><canvas data-chart="bar" data-source="c-month" data-label="Spent" role="img" aria-label="Spending per month"></canvas></div>
+    <script type="application/json" id="c-month">{{ o.monthly|tojson }}</script>{% else %}<div class="empty">No approved spending yet.</div>{% endif %}
+  </div></div>
+  <div class="col-xl-5"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("pie-chart") }} Spending by category</h2></div>
+    {% if o.by_category["values"]|sum %}<div class="chart-box"><canvas data-chart="doughnut" data-source="c-cat" role="img" aria-label="Spending by category"></canvas></div>
+    <script type="application/json" id="c-cat">{{ o.by_category|tojson }}</script>{% else %}<div class="empty">No approved spending yet.</div>{% endif %}
+  </div></div>
+</div>
+
+<div class="panel mt-4">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("folder-kanban") }} Budget utilisation by project</h2><p class="panel-sub">Compare money used with work done. Spending well ahead of progress is an early warning.</p></div>
+    <a class="btn btn-soft" href="{{ url_for('workspace.exchange_rates') }}">{{ icon("coins") }} Exchange rates</a></div>
+  {% if o.rows %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Project</th><th class="num">Budget ({{ base }})</th><th class="num">Spent</th><th>Money used</th><th>Work done</th><th>CPI</th></tr></thead>
+    <tbody>{% for r in o.rows %}
+      <tr><td class="cell-project"><a class="name fw-semibold d-block" href="{{ url_for('workspace.project_budget', project_id=r.project.id) }}" translate="no">{{ r.project.name }}</a>
+          <div class="d-flex gap-1 flex-wrap mt-1">{{ budget_status(r.project) }}{% if r.over_lines %}<span class="chip red">{{ r.over_lines }} line{{ "s" if r.over_lines != 1 }} over</span>{% endif %}</div></td>
+        <td class="num">{{ r.budget|money(base) }}</td><td class="num">{{ r.spent|money(base) }}</td>
+        <td class="progress-cell">{{ progress_bar(r.used_pct if r.used_pct <= 100 else 100) }}</td>
+        <td class="progress-cell">{{ progress_bar(r.progress) }}</td>
+        <td class="num {{ 'text-danger fw-semibold' if r.cpi is not none and r.cpi < 1 }}">{{ "%.2f"|format(r.cpi) if r.cpi is not none else "—" }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">No open projects yet.</div>{% endif %}
+</div>
+{% endblock %}

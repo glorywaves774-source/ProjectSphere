@@ -1,0 +1,13 @@
+{% from "partials/macros.html" import icon %}
+<nav class="segmented page-tabs mb-3" aria-label="Project sections">
+  <a href="{{ url_for('workspace.project', project_id=project.id) }}" {% if request.endpoint == 'workspace.project' %}aria-current="page"{% endif %}>{{ icon("layout-dashboard") }} Overview</a>
+  <a href="{{ url_for('workspace.project_tasks', project_id=project.id) }}" {% if request.endpoint == 'workspace.project_tasks' %}aria-current="page"{% endif %}>{{ icon("list-checks") }} Tasks</a>
+  <a href="{{ url_for('workspace.project_gantt', project_id=project.id) }}" {% if request.endpoint == 'workspace.project_gantt' %}aria-current="page"{% endif %}>{{ icon("gantt-chart") }} Gantt</a>
+  {% if current_user.can("budget.view") or current_user.can("projects.manage") %}<a href="{{ url_for('workspace.project_budget', project_id=project.id) }}" {% if request.endpoint in ('workspace.project_budget',) %}aria-current="page"{% endif %}>{{ icon("wallet") }} Budget</a>{% endif %}
+  {% if current_user.can("me.view") %}<a href="{{ url_for('workspace.project_me', project_id=project.id) }}" {% if request.endpoint == 'workspace.project_me' %}aria-current="page"{% endif %}>{{ icon("target") }} M&amp;E</a>{% endif %}
+  {% if current_user.can("risks.view") %}<a href="{{ url_for('workspace.project_risks', project_id=project.id) }}" {% if request.endpoint == 'workspace.project_risks' %}aria-current="page"{% endif %}>{{ icon("shield-alert") }} Risks</a>{% endif %}
+  {% if current_user.can("procurement.view") %}<a href="{{ url_for('workspace.procurement', project=project.id) }}">{{ icon("shopping-cart") }} Purchases</a>{% endif %}
+  {% if current_user.can("documents.view") %}<a href="{{ url_for('workspace.project_documents', project_id=project.id) }}" {% if request.endpoint == 'workspace.project_documents' %}aria-current="page"{% endif %}>{{ icon("folder-open") }} Documents</a>{% endif %}
+  <a href="{{ url_for('workspace.project_discussion', project_id=project.id) }}">{{ icon("messages-square") }} Discussion</a>
+  <a href="{{ url_for('workspace.calendar_view', project=project.id) }}">{{ icon("calendar-days") }} Calendar</a>
+</nav>

@@ -1,0 +1,52 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}Organization profile{% endblock %}
+{% block page_title %}Organization profile{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("building-2") }} Details</h2>
+        <p class="panel-sub">{% if can_edit %}These details appear on reports and invoices.{% else %}Only an Organization Admin can change these details.{% endif %}</p></div></div>
+      {% if can_edit %}
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="row g-3">
+          <div class="col-md-7">{{ field(form.name) }}</div>
+          <div class="col-md-5">{{ field(form.org_type) }}</div>
+          <div class="col-md-6">{{ field(form.email, autocomplete="email") }}</div>
+          <div class="col-md-6">{{ field(form.phone, autocomplete="tel") }}</div>
+          <div class="col-md-6">{{ field(form.website, autocomplete="url", placeholder="https://") }}</div>
+          <div class="col-md-6">{{ field(form.country, autocomplete="country-name") }}</div>
+          <div class="col-12">{{ field(form.address, autocomplete="street-address") }}</div>
+          <div class="col-md-6">{{ field(form.currency) }}</div>
+          <div class="col-md-6">{{ field(form.timezone, hint="For example Africa/Accra") }}</div>
+        </div>
+        <button class="btn btn-primary" type="submit">{{ icon("save") }} Save changes</button>
+      </form>
+      {% else %}
+      <dl class="dl-grid" translate="no">
+        <div><dt>Name</dt><dd>{{ org.name }}</dd></div>
+        <div><dt>Type</dt><dd>{{ org.type_label }}</dd></div>
+        <div><dt>Country</dt><dd>{{ org.country }}</dd></div>
+        <div><dt>Email</dt><dd>{{ org.email or "—" }}</dd></div>
+        <div><dt>Phone</dt><dd>{{ org.phone or "—" }}</dd></div>
+        <div><dt>Website</dt><dd>{{ org.website or "—" }}</dd></div>
+        <div><dt>Address</dt><dd>{{ org.address or "—" }}</dd></div>
+        <div><dt>Currency</dt><dd>{{ org.currency }}</dd></div>
+      </dl>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("fingerprint") }} Workspace</h2></div>
+      <dl class="dl-grid">
+        <div><dt>Workspace ID</dt><dd class="code small">{{ org.slug }}</dd></div>
+        <div><dt>Created</dt><dd>{{ org.created_at|dt("%d %b %Y") }}</dd></div>
+        <div><dt>Status</dt><dd>{{ "Suspended" if org.is_suspended else "Active" }}</dd></div>
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

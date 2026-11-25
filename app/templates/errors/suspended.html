@@ -1,0 +1,15 @@
+{% extends "layouts/base.html" %}
+{% from "partials/macros.html" import icon, theme_button, brand %}
+{% block title %}Workspace suspended{% endblock %}
+{% block body_class %}no-tabs{% endblock %}
+{% block body %}
+<header class="public-nav">{{ brand("/") }}<div class="tools">{{ theme_button() }}</div></header>
+<main class="error-page" id="main">
+  <div class="panel p-5">
+    <span class="kpi-icon red mx-auto">{{ icon("pause-circle") }}</span>
+    <h1 class="h3 mt-3">Workspace suspended</h1>
+    <p class="text-3"><span translate="no">{{ org.name }}</span>'s workspace is suspended. Please contact Kayron Global Tech Services support.</p>
+    <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-soft" type="submit">Sign out</button></form>
+  </div>
+</main>
+{% endblock %}

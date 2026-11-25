@@ -1,0 +1,50 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, task_status, task_priority, task_due, progress_bar %}
+{% block title %}Tasks · {{ project.name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.projects') }}">Projects</a> · {{ project.code }}{% endblock %}
+{% block page_title %}<span translate="no">{{ project.name }}</span>{% endblock %}
+{% block content %}
+{% include "partials/project_tabs.html" %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon">{{ icon("list-checks") }}</span>Tasks</div><div class="kpi-value">{{ total }}</div><div class="kpi-foot">{{ counts.done }} done</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("gauge") }}</span>Progress</div><div class="kpi-value">{{ project.progress }}%</div><div class="kpi-foot">{{ "Calculated from tasks" if total else "Add tasks to calculate" }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon red">{{ icon("alarm-clock") }}</span>Overdue</div><div class="kpi-value">{{ overdue }}</div><div class="kpi-foot">{{ counts.blocked }} blocked</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon amber">{{ icon("route") }}</span>Critical path</div><div class="kpi-value">{{ crit|length }}</div><div class="kpi-foot">Tasks with no slack</div></div></div>
+</div>
+<div class="panel">
+  <div class="panel-head">
+    <div><h2 class="panel-title">{{ icon("network") }} Work breakdown</h2><p class="panel-sub">Tasks in order, with sub-tasks indented. {{ icon("route") }} marks the critical path.</p></div>
+    {% if can_plan and project.is_open %}
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-soft" href="{{ url_for('workspace.task_new', project_id=project.id, milestone=1) }}">{{ icon("diamond") }} Milestone</a>
+      <a class="btn btn-primary" href="{{ url_for('workspace.task_new', project_id=project.id) }}">{{ icon("plus") }} Task</a>
+    </div>
+    {% endif %}
+  </div>
+  {% if rows %}
+  <div class="table-wrap"><table class="table-ps wbs">
+    <thead><tr><th>#</th><th>Task</th><th>Assigned</th><th>Status</th><th>Progress</th><th>Due</th>{% if can_plan and project.is_open %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for t, code, depth in rows %}
+      <tr class="{{ 'summary-row' if t.children }} {{ 'done-row' if t.is_done }}">
+        <td class="code text-3">{{ code }}</td>
+        <td><div class="wbs-title depth-{{ depth if depth < 5 else 5 }}">
+          {% if t.is_milestone %}<span class="ms-icon" title="Milestone">{{ icon("diamond") }}</span>{% endif %}
+          <a class="name {{ 'fw-semibold' if t.children }}" href="{{ url_for('workspace.task', task_id=t.id) }}" translate="no">{{ t.title }}</a>
+          {% if t.id in crit %}<span class="crit" title="On the critical path">{{ icon("route") }}</span>{% endif %}
+          {% if t.id in waiting %}<span class="chip" title="Waiting for another task">{{ icon("link-2") }} Waiting</span>{% endif %}
+          {{ task_priority(t) }}
+        </div></td>
+        <td class="nowrap" translate="no">{{ t.assignee.full_name if t.assignee else "—" }}</td>
+        <td>{{ task_status(t) }}</td>
+        <td class="progress-cell">{% if not t.is_milestone %}{{ progress_bar(100 if t.is_done else t.progress) }}{% endif %}</td>
+        <td class="date">{{ task_due(t) }}</td>
+        {% if can_plan and project.is_open %}<td>{% if not t.is_milestone %}<a class="icon-btn sm" href="{{ url_for('workspace.task_new', project_id=project.id, parent=t.id) }}" title="Add sub-task" aria-label="Add sub-task to {{ t.title }}">{{ icon("plus") }}</a>{% endif %}</td>{% endif %}
+      </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}
+  <div class="empty">{{ icon("list-checks") }}<div>No tasks yet. Break the project into tasks and milestones to plan the schedule and track progress automatically.</div>
+    {% if can_plan and project.is_open %}<a class="btn btn-primary mt-3" href="{{ url_for('workspace.task_new', project_id=project.id) }}">{{ icon("plus") }} Add the first task</a>{% endif %}</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, expense_status, budget_status, progress_bar %}
+{% block title %}Budget · {{ project.name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.projects') }}">Projects</a> · {{ project.code }}{% endblock %}
+{% block page_title %}<span translate="no">{{ project.name }}</span>{% endblock %}
+{% block content %}
+{% include "partials/project_tabs.html" %}
+{% set cur = project.currency %}
+<div class="panel budget-bar">
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    {{ budget_status(project) }}
+    {% if project.budget_status == "approved" and project.budget_approved_by %}<span class="small text-3">by <span translate="no">{{ project.budget_approved_by.full_name }}</span> on {{ project.budget_approved_at|dt("%d %b %Y") }}</span>{% endif %}
+    <div class="ms-auto d-flex gap-2 flex-wrap">
+      <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.project_budget_xlsx', project_id=project.id) }}">{{ icon("file-spreadsheet") }} Excel</a>
+      {% if project.is_open %}
+        {% if project.budget_status == "draft" and can_plan %}
+          <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.budget_line_new', project_id=project.id) }}">{{ icon("plus") }} Budget line</a>
+          {% if f.rows %}<form method="post" action="{{ url_for('workspace.project_budget_action', project_id=project.id, action='submit') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary btn-sm" type="submit">{{ icon("send") }} Submit for approval</button></form>{% endif %}
+        {% endif %}
+        {% if project.budget_status == "submitted" and can_approve %}
+          <form method="post" action="{{ url_for('workspace.project_budget_action', project_id=project.id, action='approve') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary btn-sm" type="submit">{{ icon("badge-check") }} Approve budget</button></form>
+        {% endif %}
+        {% if project.budget_status == "approved" and can_request %}
+          <a class="btn btn-primary btn-sm" href="{{ url_for('workspace.expense_new', project_id=project.id) }}">{{ icon("receipt") }} Record expense</a>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+  {% if project.budget_status in ("submitted", "approved") and can_approve and project.is_open %}
+  <details class="edit-details mt-3"><summary>{{ icon("undo-2") }} {{ "Send back to draft" if project.budget_status == "submitted" else "Reopen for revision" }}</summary>
+    <form method="post" action="{{ url_for('workspace.project_budget_action', project_id=project.id, action='return') }}" class="mt-2 d-flex gap-2 flex-wrap">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input class="form-control flex-fill" name="note" placeholder="Reason (required)" maxlength="500" aria-label="Reason">
+      <button class="btn btn-soft" type="submit">Return budget</button>
+    </form></details>
+  {% endif %}
+  {% if project.budget_status == "draft" and f.rows %}<p class="small text-3 mt-3 mb-0">{{ icon("info") }} Spending can be recorded once the budget is submitted and approved.</p>{% endif %}
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon">{{ icon("wallet") }}</span>Budget</div>
+    <div class="kpi-value kpi-money">{{ f.bac|money(cur) }}</div>
+    <div class="kpi-foot">{% if f.unallocated is not none and f.unallocated != 0 %}{{ f.unallocated|money(cur) }} {{ "unallocated" if f.unallocated > 0 else "over the planned envelope" }}{% else %}{{ f.rows|length }} line{{ "s" if f.rows|length != 1 }}{% endif %}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("receipt") }}</span>Spent</div>
+    <div class="kpi-value kpi-money">{{ f.ac|money(cur) }}</div><div class="kpi-foot">{{ f.used_pct }}% of budget · progress {{ project.progress }}%</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon amber">{{ icon("hourglass") }}</span>Awaiting approval</div>
+    <div class="kpi-value kpi-money">{{ f.committed|money(cur) }}</div><div class="kpi-foot">{{ f.pending }} request{{ "s" if f.pending != 1 }}</div></div></div>
+  <div class="col-6 col-xl-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon {{ 'red' if f.cpi is not none and f.cpi < 1 else 'green' }}">{{ icon("scale") }}</span>Cost performance</div>
+    <div class="kpi-value">{{ "%.2f"|format(f.cpi) if f.cpi is not none else "—" }}</div>
+    <div class="kpi-foot">{% if f.cpi is none %}Shown once money is spent{% elif f.cpi >= 1 %}Getting value for money (CPI ≥ 1){% else %}Spending ahead of progress (CPI &lt; 1){% endif %}{% if f.spi is not none %} · SPI {{ "%.2f"|format(f.spi) }}{% endif %}</div></div></div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("table") }} Budget vs actual</h2><p class="panel-sub">Amounts in {{ cur }}. Red rows are over budget.</p></div></div>
+  {% if f.rows %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Line</th><th class="num">Budget</th><th class="num">Spent</th><th class="num">Awaiting</th><th class="num">Remaining</th><th>Used</th></tr></thead>
+    <tbody>{% for r in f.rows %}
+      <tr class="{{ 'over-row' if r.over }}">
+        <td class="cell-project"><div class="fw-semibold">{% if can_plan and project.budget_status == "draft" and project.is_open %}<a class="name" href="{{ url_for('workspace.budget_line_edit', line_id=r.line.id) }}">{% endif %}<span class="code text-3">{{ r.line.code }}</span> <span translate="no">{{ r.line.description }}</span>{% if can_plan and project.budget_status == "draft" and project.is_open %}</a>{% endif %}</div>
+          <div class="small text-3">{{ r.line.category_label }} · {{ r.line.quantity|qty }} {{ r.line.unit }} × {{ r.line.unit_cost|money(cur) }}{% if r.line.task %} · <span translate="no">{{ r.line.task.title }}</span>{% endif %}</div></td>
+        <td class="num">{{ r.budget|money(cur) }}</td><td class="num">{{ r.spent|money(cur) }}</td>
+        <td class="num text-3">{{ r.committed|money(cur) if r.committed else "—" }}</td>
+        <td class="num {{ 'text-danger fw-semibold' if r.remaining < 0 }}">{{ r.remaining|money(cur) }}</td>
+        <td class="progress-cell">{{ progress_bar(r.used_pct if r.used_pct <= 100 else 100) }}{% if r.used_pct > 100 %}<div class="small text-danger">{{ r.used_pct }}% used</div>{% endif %}</td>
+      </tr>
+    {% endfor %}</tbody>
+    <tfoot><tr><td class="fw-bold">Total</td><td class="num fw-bold">{{ f.bac|money(cur) }}</td><td class="num fw-bold">{{ f.ac|money(cur) }}</td>
+      <td class="num">{{ f.committed|money(cur) }}</td><td class="num fw-bold">{{ f.remaining|money(cur) }}</td><td class="progress-cell">{{ progress_bar(f.used_pct if f.used_pct <= 100 else 100) }}</td></tr></tfoot>
+  </table></div>
+  {% else %}
+  <div class="empty">{{ icon("wallet") }}<div>No budget lines yet. Break the budget down by category, such as personnel, travel or equipment.</div>
+    {% if can_plan and project.is_open %}<a class="btn btn-primary mt-3" href="{{ url_for('workspace.budget_line_new', project_id=project.id) }}">{{ icon("plus") }} Add the first line</a>{% endif %}</div>
+  {% endif %}
+</div>
+
+<div class="row g-4 mt-0">
+  <div class="col-xl-6"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("chart-column") }} Budget and spending by category</h2></div>
+    {% if chart.labels %}<div class="chart-box"><canvas data-chart="bar" data-source="c-cat" role="img" aria-label="Budget and spending by category"></canvas></div>
+    <script type="application/json" id="c-cat">{{ dict(chart, seriesLabels=["Budget", "Spent"])|tojson }}</script>{% else %}<div class="empty">No budget yet.</div>{% endif %}
+  </div></div>
+  <div class="col-xl-6"><div class="panel h-100">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("receipt") }} Recent expenses</h2>
+      <a class="small fw-semibold" href="{{ url_for('workspace.expenses', project=project.id) }}">All expenses</a></div>
+    {% if expenses %}<ul class="activity-list">{% for e in expenses %}
+      <li><span class="activity-dot">{{ icon("receipt") }}</span><div class="activity-body flex-fill"><a class="what d-block" href="{{ url_for('workspace.expense', expense_id=e.id) }}" translate="no">{{ e.description }}</a>
+        <div class="meta"><span class="code">{{ e.reference }}</span> · {{ e.spent_on.strftime("%d %b %Y") }} · {{ e.budget_line.code }}</div></div>
+        <div class="text-end"><div class="fw-semibold nowrap">{{ e.amount|money(e.currency) }}</div>{{ expense_status(e) }}</div></li>
+    {% endfor %}</ul>{% else %}<div class="empty">No expenses yet.</div>{% endif %}
+  </div></div>
+</div>
+{% endblock %}

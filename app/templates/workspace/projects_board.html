@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, project_health, project_priority, progress_bar, due %}
+{% block title %}Project board{% endblock %}
+{% block page_title %}Projects{% endblock %}
+{% block content %}
+<div class="panel">
+  {% include "partials/project_head.html" %}
+  {% include "partials/project_filters.html" %}
+</div>
+<div class="board" aria-label="Projects by status">
+  {% for key, label, items in columns %}
+  <section class="board-col">
+    <header class="board-col-head"><span class="board-dot {{ key }}"></span>{{ label }}<span class="count">{{ items|length }}</span></header>
+    <div class="board-cards">
+      {% for p in items %}
+      <a class="board-card" href="{{ url_for('workspace.project', project_id=p.id) }}">
+        <div class="d-flex justify-content-between gap-2 align-items-start">
+          <span class="code small text-3">{{ p.code }}</span>{{ project_priority(p) }}
+        </div>
+        <div class="fw-semibold mt-1" translate="no">{{ p.name }}</div>
+        {% if p.category %}<div class="small mt-1"><span class="cat-dot sm" data-color="{{ p.category.color }}"></span> {{ p.category.name }}</div>{% endif %}
+        <div class="mt-2">{{ progress_bar(p.progress) }}</div>
+        <div class="d-flex justify-content-between align-items-end gap-2 mt-2 small">
+          <div>{{ due(p) }}</div>{{ project_health(p) }}
+        </div>
+        {% if p.manager %}<div class="d-flex align-items-center gap-2 mt-2 small text-3"><span class="avatar xs" translate="no">{{ p.manager.initials }}</span><span translate="no">{{ p.manager.full_name }}</span></div>{% endif %}
+      </a>
+      {% else %}<div class="board-empty">Nothing here</div>{% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, ticket_status %}
+{% block title %}Help & support{% endblock %}
+{% block page_title %}Help & support{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("life-buoy") }} Support requests</h2>
+    <p class="panel-sub">{% if current_user.can("org.manage") %}All requests from your organization.{% else %}Requests you have raised.{% endif %}
+      You can also email <a href="mailto:{{ PS.support_email }}">{{ PS.support_email }}</a>.</p></div>
+    <a class="btn btn-primary" href="{{ url_for('workspace.support_new') }}">{{ icon("plus") }} New request</a></div>
+  <form class="search-row mb-3" method="get">
+    <select class="form-select" name="status" data-autosubmit aria-label="Show">
+      <option value="open" {{ "selected" if status == "open" }}>Open</option>
+      <option value="closed" {{ "selected" if status == "closed" }}>Resolved & closed</option>
+      <option value="all" {{ "selected" if status == "all" }}>All</option>
+    </select>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Request</th><th>Status</th><th>Raised by</th><th>Last activity</th></tr></thead>
+    <tbody>{% for t in page.items %}
+      <tr><td><a class="fw-semibold" href="{{ url_for('workspace.support_ticket', ticket_id=t.id) }}">{{ t.subject }}</a><div class="small text-3"><span class="code">{{ t.reference }}</span> · {{ t.category_label }}</div></td>
+        <td>{{ ticket_status(t) }}</td>
+        <td class="nowrap" translate="no">{{ t.created_by.full_name if t.created_by else "—" }}</td>
+        <td class="date">{{ t.last_activity_at|dt }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "workspace.support") }}
+  {% else %}<div class="empty">{{ icon("life-buoy") }}<div>No requests here. Need help? Start a new request.</div></div>{% endif %}
+</div>
+{% endblock %}

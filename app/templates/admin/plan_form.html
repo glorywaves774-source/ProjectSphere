@@ -1,0 +1,48 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, check %}
+{% block title %}{{ plan.name if plan else "New plan" }}{% endblock %}
+{% block page_title %}{{ ("Edit " ~ plan.name) if plan else "New plan" }}{% endblock %}
+{% block content %}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-4">
+    <div class="col-xl-8">
+      <div class="panel">
+        <div class="panel-head"><h2 class="panel-title">{{ icon("layers") }} Plan details</h2></div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            {% if plan %}<div class="mb-3"><label class="form-label" for="code-ro">Code</label><input id="code-ro" class="form-control" value="{{ plan.code }}" disabled><input type="hidden" name="code" value="{{ plan.code }}"></div>
+            {% else %}{{ field(form.code, hint=form.code.description) }}{% endif %}
+          </div>
+          <div class="col-md-4">{{ field(form.name) }}</div>
+          <div class="col-md-4">{{ field(form.audience, placeholder="e.g. Small teams") }}</div>
+          <div class="col-12">{{ field(form.description) }}</div>
+          <div class="col-md-4">{{ field(form.currency) }}</div>
+          <div class="col-md-4">{{ field(form.price_monthly, hint=form.price_monthly.description) }}</div>
+          <div class="col-md-4">{{ field(form.price_annual) }}</div>
+          <div class="col-12">{{ field(form.features, hint="Shown as a checklist on the pricing page.") }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="panel">
+        <div class="panel-head"><h2 class="panel-title">{{ icon("gauge") }} Limits</h2></div>
+        {{ field(form.max_users, hint=form.max_users.description) }}
+        {{ field(form.max_projects, hint=form.max_projects.description) }}
+        {{ field(form.max_storage_mb, hint=form.max_storage_mb.description) }}
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2 class="panel-title">{{ icon("eye") }} Visibility</h2></div>
+        {{ check(form.is_public) }}
+        {{ check(form.is_active) }}
+        {{ field(form.sort_order) }}
+        {% if plan %}<p class="small text-3 mb-0">{{ subscribers }} organization{{ "s" if subscribers != 1 }} on this plan. Plans with subscribers can be retired but not deleted.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">{{ icon("save") }} {{ "Save plan" if plan else "Create plan" }}</button>
+    <a class="btn btn-soft" href="{{ url_for('admin.plans') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

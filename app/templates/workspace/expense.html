@@ -1,0 +1,81 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, check, expense_status, progress_bar %}
+{% block title %}{{ e.reference }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.expenses') }}">Expenses</a> · <a href="{{ url_for('workspace.project_budget', project_id=e.project_id) }}">{{ e.project.code }}</a>{% endblock %}
+{% block page_title %}{{ e.reference }}{% endblock %}
+{% block content %}
+{% set pcur = e.project.currency %}
+{% if e.status == "submitted" and e.over_budget %}<div class="announce warning">{{ icon("alert-triangle") }}<span>This expense would take budget line {{ e.budget_line.code }} over its budget.</span></div>{% endif %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-2 align-items-center mb-3">{{ expense_status(e) }}{% if e.over_budget %}<span class="chip red">Over budget</span>{% endif %}
+        {% if e.requested_by_id == current_user.id and e.status in ("draft", "rejected") %}
+        <div class="ms-auto d-flex gap-2">
+          <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.expense_edit', expense_id=e.id) }}">{{ icon("pencil") }} Edit</a>
+          <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="submit"><button class="btn btn-primary btn-sm" type="submit">{{ icon("send") }} Send for approval</button></form>
+          <form method="post" data-confirm="Tap again"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><button class="btn btn-danger-soft btn-sm" type="submit">{{ icon("trash-2") }}</button></form>
+        </div>{% endif %}
+      </div>
+      <div class="amount-big">{{ e.amount|money(e.currency) }}</div>
+      {% if e.currency != pcur %}<div class="text-3 small">= {{ e.amount_project|money(pcur) }} at 1 {{ e.currency }} = {{ e.exchange_rate|round(4) }} {{ pcur }}</div>{% endif %}
+      <p class="lead-text mt-2 mb-0" translate="no">{{ e.description }}</p>
+      <dl class="dl-grid mt-3" translate="no">
+        <div><dt>Date</dt><dd>{{ e.spent_on.strftime("%d %b %Y") }}</dd></div>
+        <div><dt>Paid to</dt><dd>{{ e.payee or "—" }}</dd></div>
+        <div><dt>Invoice / receipt</dt><dd>{{ e.invoice_ref or "—" }}</dd></div>
+        <div><dt>Budget line</dt><dd>{{ e.budget_line.code }} · {{ e.budget_line.description }}</dd></div>
+      </dl>
+    </div>
+    {% if e.status == "submitted" and can_approve %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("badge-check") }} Decision</h2></div>
+      <form method="post" novalidate>
+        {{ decision.hidden_tag() }}
+        {{ field(decision.note, placeholder="Required when rejecting or approving over budget") }}
+        {% if e.over_budget %}{{ check(decision.allow_over) }}{% endif %}
+        <div class="form-actions mt-0">
+          <button class="btn btn-primary" type="submit" name="action" value="approve">{{ icon("thumbs-up") }} Approve</button>
+          <button class="btn btn-danger-soft" type="submit" name="action" value="reject">{{ icon("x") }} Reject</button>
+        </div>
+      </form>
+    </div>
+    {% elif e.status == "submitted" and e.requested_by_id == current_user.id %}
+    <div class="panel"><p class="mb-0 text-3">{{ icon("hourglass") }} Waiting for an approver. You can't approve your own expense.</p></div>
+    {% endif %}
+    {% if e.status == "approved" and can_pay %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("banknote") }} Record payment</h2></div>
+      <form method="post" novalidate>
+        {{ payment.hidden_tag() }}<input type="hidden" name="action" value="pay">
+        <div class="row g-3"><div class="col-md-4">{{ field(payment.paid_at) }}</div><div class="col-md-4">{{ field(payment.method) }}</div><div class="col-md-4">{{ field(payment.ref) }}</div></div>
+        <button class="btn btn-primary" type="submit">{{ icon("check") }} Mark as paid</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("history") }} Trail</h2></div>
+      <dl class="dl-grid one-col" translate="no">
+        <div><dt>Requested by</dt><dd>{{ e.requested_by.full_name if e.requested_by else "—" }} · {{ e.created_at|dt("%d %b %Y") }}</dd></div>
+        {% if e.submitted_at %}<div><dt>Submitted</dt><dd>{{ e.submitted_at|dt }}</dd></div>{% endif %}
+        {% if e.decided_by %}<div><dt>{{ "Approved" if e.status in ("approved", "paid") else "Rejected" }} by</dt><dd>{{ e.decided_by.full_name }} · {{ e.decided_at|dt }}{% if e.decision_note %}<div class="small text-3 mt-1">“{{ e.decision_note }}”</div>{% endif %}</dd></div>{% endif %}
+        {% if e.paid_at %}<div><dt>Paid</dt><dd>{{ e.paid_at.strftime("%d %b %Y") }} · {{ e.payment_label }}{% if e.payment_ref %} · {{ e.payment_ref }}{% endif %}</dd></div>{% endif %}
+      </dl>
+    </div>
+    {% if line_f %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("wallet") }} Line {{ e.budget_line.code }}</h2></div>
+      {{ progress_bar(line_f.used_pct if line_f.used_pct <= 100 else 100) }}
+      <dl class="dl-grid one-col mt-3">
+        <div><dt>Budget</dt><dd>{{ line_f.budget|money(pcur) }}</dd></div>
+        <div><dt>Spent</dt><dd>{{ line_f.spent|money(pcur) }}</dd></div>
+        <div><dt>Awaiting approval</dt><dd>{{ line_f.committed|money(pcur) }}</dd></div>
+        <div><dt>Remaining</dt><dd class="{{ 'text-danger' if line_f.remaining < 0 }}">{{ line_f.remaining|money(pcur) }}</dd></div>
+      </dl>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

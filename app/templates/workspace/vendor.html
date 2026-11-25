@@ -1,0 +1,53 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, vendor_status, pr_status %}
+{% block title %}{{ v.name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.vendors') }}">Vendors</a> · {{ v.code }}{% endblock %}
+{% block page_title %}<span translate="no">{{ v.name }}</span>{% endblock %}
+{% block content %}
+{% if v.status in ("suspended", "blacklisted") %}<div class="announce warning">{{ icon("ban") }}<span>{{ v.status_label }}{% if v.status_note %}: <span translate="no">{{ v.status_note }}</span>{% endif %}. This vendor can't be awarded new orders.</span></div>{% endif %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon">{{ icon("shopping-cart") }}</span>Orders</div><div class="kpi-value">{{ s.count }}</div><div class="kpi-foot">{{ s.quotes }} quotation{{ "s" if s.quotes != 1 }} submitted</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("banknote") }}</span>Value</div><div class="kpi-value kpi-money">{{ s.value|money(current_user.organization.currency) }}</div><div class="kpi-foot">awarded, in project currencies</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon amber">{{ icon("star") }}</span>Rating</div><div class="kpi-value">{{ s.rating or "—" }}</div><div class="kpi-foot">average on receipt, out of 5</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon green">{{ icon("badge-check") }}</span>Status</div><div class="kpi-value kpi-text">{{ v.status_label }}</div><div class="kpi-foot">{{ ("since " ~ v.approved_at.strftime("%d %b %Y")) if v.approved_at and v.status == "approved" else v.code }}</div></div></div>
+</div>
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("history") }} Orders</h2></div>
+      {% if s.awards %}<ul class="dash-list">{% for p in s.awards %}
+        <li><div class="min-w-0 flex-fill"><a class="fw-semibold d-block" href="{{ url_for('workspace.procurement_request', pr_id=p.id) }}" translate="no">{{ p.title }}</a>
+          <div class="small text-3"><span class="code">{{ p.po_number }}</span> · {{ p.project.code }} · {{ p.awarded_amount_project|money(p.project.currency) }}{% if p.vendor_rating %} · rated {{ p.vendor_rating }}/5{% endif %}</div></div>{{ pr_status(p) }}</li>
+      {% endfor %}</ul>{% else %}<div class="empty">{{ icon("shopping-cart") }}<div>No orders yet.</div></div>{% endif %}
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Details</h2>{% if is_officer %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.vendor_edit', vendor_id=v.id) }}">{{ icon("pencil") }} Edit</a>{% endif %}</div>
+      <dl class="dl-grid one-col">
+        <div><dt>Status</dt><dd>{{ vendor_status(v) }}</dd></div>
+        <div><dt>Category</dt><dd>{{ v.category_label }}</dd></div>
+        {% if v.contact_name %}<div><dt>Contact</dt><dd translate="no">{{ v.contact_name }}</dd></div>{% endif %}
+        {% if v.phone %}<div><dt>Phone</dt><dd><a href="tel:{{ v.phone }}" translate="no">{{ v.phone }}</a></dd></div>{% endif %}
+        {% if v.email %}<div><dt>Email</dt><dd><a href="mailto:{{ v.email }}" translate="no">{{ v.email }}</a></dd></div>{% endif %}
+        {% if v.address %}<div><dt>Address</dt><dd class="prose" translate="no">{{ v.address }}</dd></div>{% endif %}
+        <div><dt>Tax ID (TIN)</dt><dd class="code">{{ v.tax_id or "Not recorded" }}</dd></div>
+        {% if v.registration_no %}<div><dt>Registration</dt><dd class="code">{{ v.registration_no }}</dd></div>{% endif %}
+        {% if v.notes %}<div><dt>Notes</dt><dd class="prose" translate="no">{{ v.notes }}</dd></div>{% endif %}
+      </dl>
+    </div>
+    {% if is_officer %}
+    <div class="panel">
+      <form method="post" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="vstatus">Change status</label>
+        <select class="form-select mb-2" id="vstatus" name="status">
+          {% for val, label in [("approved", "Approve"), ("suspended", "Suspend"), ("blacklisted", "Blacklist")] %}{% if val != v.status %}<option value="{{ val }}">{{ label }}</option>{% endif %}{% endfor %}
+        </select>
+        <textarea class="form-control mb-2" name="note" rows="2" maxlength="2000" placeholder="Reason (required to suspend or blacklist)" aria-label="Reason"></textarea>
+        <button class="btn btn-soft w-100" type="submit">{{ icon("save") }} Update status</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

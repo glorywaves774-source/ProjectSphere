@@ -1,0 +1,25 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/macros.html" import field, check, icon %}
+{% block title %}Create your workspace{% endblock %}
+{% block content %}
+<div class="neu-card wide">
+  <h1>Create your workspace</h1>
+  <p class="sub">{% if PS.trial_days != "0" %}Start a {{ PS.trial_days }}-day free trial. No payment needed today.{% else %}Set up your organization in a minute.{% endif %}</p>
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="row g-3">
+      <div class="col-md-7">{{ field(form.org_name, autocomplete="organization", placeholder="e.g. Hope Foundation Ghana") }}</div>
+      <div class="col-md-5">{{ field(form.org_type) }}</div>
+      <div class="col-md-5">{{ field(form.country, autocomplete="country-name") }}</div>
+      <div class="col-md-7">{{ field(form.plan) }}</div>
+      <div class="col-md-6">{{ field(form.full_name, autocomplete="name") }}</div>
+      <div class="col-md-6">{{ field(form.email, autocomplete="email", placeholder="you@organization.org") }}</div>
+      <div class="col-md-6">{{ field(form.password, autocomplete="new-password", hint="10+ characters with upper and lower case and a number.") }}</div>
+      <div class="col-md-6">{{ field(form.confirm, autocomplete="new-password") }}</div>
+    </div>
+    {{ check(form.accept) }}
+    <button class="btn btn-primary" type="submit">{{ icon("sparkles") }} Create workspace</button>
+  </form>
+  <p class="auth-switch">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+</div>
+{% endblock %}

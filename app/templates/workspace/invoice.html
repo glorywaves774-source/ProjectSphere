@@ -1,0 +1,60 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}{{ inv.number }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.subscription') }}">Subscription</a>{% endblock %}
+{% block page_title %}Invoice {{ inv.number }}{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <span class="chip {{ {'paid': 'green', 'open': 'red' if inv.is_overdue else 'amber', 'void': ''}[inv.status] }}">{{ "Overdue" if inv.is_overdue else inv.status_label }}</span><span class="chip">{{ inv.kind_label }}</span>
+        <a class="btn btn-soft btn-sm ms-auto" href="{{ url_for('workspace.invoice_pdf', invoice_id=inv.id) }}">{{ icon("download") }} PDF</a>
+      </div>
+      <div class="table-wrap"><table class="table-ps">
+        <thead><tr><th>Description</th><th class="num">Amount</th></tr></thead>
+        <tbody>
+          <tr><td>{{ inv.description }}{% if inv.period_start %}<div class="small text-3">{{ inv.period_start.strftime("%d %b %Y") }} – {{ inv.period_end.strftime("%d %b %Y") }}</div>{% endif %}</td><td class="num">{{ inv.subtotal|money(inv.currency) }}</td></tr>
+          {% if inv.credit %}<tr><td>Credit for unused time on your previous plan</td><td class="num">−{{ inv.credit|money(inv.currency) }}</td></tr>{% endif %}
+        </tbody>
+        <tfoot><tr><td class="fw-semibold">Total</td><td class="num fw-semibold">{{ inv.amount|money(inv.currency) }}</td></tr></tfoot>
+      </table></div>
+      {% if inv.status == "paid" %}<p class="mt-3 mb-0">{{ icon("circle-check") }} Paid {{ inv.paid_at|dt }} by {{ {"paystack": "Paystack", "bank": "bank transfer", "credit": "account credit", "momo": "mobile money"}.get(inv.payment_method, inv.payment_method) }}{% if inv.payment_reference %} · <span class="code">{{ inv.payment_reference }}</span>{% endif %}</p>{% endif %}
+      {% if inv.status == "void" and inv.note %}<p class="mt-3 mb-0 text-3">Voided: {{ inv.note }}</p>{% endif %}
+    </div>
+    {% if inv.payments %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("history") }} Payment attempts</h2></div>
+      <ul class="dash-list">{% for p in inv.payments %}
+        <li><div class="min-w-0 flex-fill"><span class="code">{{ p.reference }}</span><div class="small text-3">{{ p.created_at|dt }}{% if p.channel %} · {{ p.channel|replace("_", " ") }}{% endif %}{% if p.gateway_message %} · {{ p.gateway_message }}{% endif %}</div></div>
+          <span class="chip {{ {'success': 'green', 'pending': 'amber', 'failed': 'red', 'abandoned': ''}[p.status] }}">{{ p.status_label }}</span></li>
+      {% endfor %}</ul>
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-xl-4">
+    {% if inv.status == "open" %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("wallet") }} Pay</h2></div>
+      <div class="kpi-value mb-1">{{ inv.amount|money(inv.currency) }}</div>
+      <p class="text-3">Due {{ inv.due_date.strftime("%d %b %Y") }}</p>
+      {% if can_manage and online %}
+      <form method="post" action="{{ url_for('workspace.invoice_pay', invoice_id=inv.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-primary w-100" type="submit">{{ icon("lock") }} Pay with card or mobile money</button></form>
+      <p class="small text-3 mt-2 mb-0">You'll finish on Paystack's secure page and come straight back. The receipt goes to {{ inv.organization.email or "your organization's email" }}.</p>
+      {% elif not can_manage %}<p class="small text-3 mb-0">Ask someone who manages the subscription to pay this invoice.</p>
+      {% elif not bank %}<p class="small text-3 mb-0">Online payment isn't switched on yet. Email <a href="mailto:{{ SALES_EMAIL }}?subject={{ inv.number }}">{{ SALES_EMAIL }}</a> for payment details, quoting {{ inv.number }}.</p>{% endif %}
+      {% if bank %}<h3 class="dep-head mt-3">Bank transfer</h3><div class="prose small">{{ bank }}</div><p class="small text-3 mb-0">Quote {{ inv.number }} as the reference.</p>{% endif %}
+    </div>
+    {% endif %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Details</h2></div>
+      <dl class="dl-grid one-col">
+        <div><dt>Billed to</dt><dd translate="no">{{ inv.organization.name }}</dd></div>
+        <div><dt>Issued</dt><dd>{{ inv.created_at|dt }}</dd></div>
+        {% if inv.plan %}<div><dt>Plan</dt><dd>{{ inv.plan.name }} · {{ "yearly" if inv.billing_cycle == "annual" else "monthly" }}</dd></div>{% endif %}
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

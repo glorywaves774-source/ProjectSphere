@@ -1,0 +1,41 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ ("Edit " ~ pr.reference) if pr else "New purchase request" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.procurement') }}">Procurement</a>{% endblock %}
+{% block page_title %}{{ ("Edit " ~ pr.reference) if pr else "New purchase request" }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="row g-3">
+      <div class="col-md-6">{{ field(form.project_id) }}</div>
+      <div class="col-md-6">{{ field(form.budget_line_id, hint="Lines from the chosen project are listed first.") }}</div>
+      <div class="col-md-8">{{ field(form.title, hint=form.title.description) }}</div>
+      <div class="col-md-4">{{ field(form.needed_by) }}</div>
+    </div>
+    {{ field(form.delivery_location) }}
+    {{ field(form.justification, hint=form.justification.description) }}
+    <h3 class="form-section">Items and estimated costs</h3>
+    <div class="items-grid" data-items>
+      <div class="items-head" aria-hidden="true"><span>Description</span><span>Specification</span><span>Qty</span><span>Unit</span><span>Est. unit cost</span><span class="num">Total</span></div>
+      {% for n in range(max_rows) %}{% set r = rows[n] if n < rows|length else {} %}
+      <div class="item-row" {% if n >= [rows|length + 2, 4]|max %}hidden{% endif %} data-item-row>
+        <input class="form-control" name="item-{{ n }}-description" value="{{ r.description or '' }}" maxlength="255" placeholder="Item {{ n + 1 }}" aria-label="Item {{ n + 1 }} description">
+        <input class="form-control" name="item-{{ n }}-specification" value="{{ r.specification or '' }}" maxlength="2000" placeholder="Size, model, standard…" aria-label="Item {{ n + 1 }} specification">
+        <input class="form-control" name="item-{{ n }}-quantity" value="{{ r.quantity or '' }}" inputmode="decimal" placeholder="Qty" aria-label="Item {{ n + 1 }} quantity" data-qty>
+        <input class="form-control" name="item-{{ n }}-unit" value="{{ r.unit or '' }}" maxlength="30" placeholder="Unit (e.g. pcs)" aria-label="Item {{ n + 1 }} unit">
+        <input class="form-control" name="item-{{ n }}-unit_cost" value="{{ r.unit_cost or '' }}" inputmode="decimal" placeholder="Unit cost" aria-label="Item {{ n + 1 }} estimated unit cost" data-cost>
+        <span class="num item-total" data-total>—</span>
+      </div>
+      {% endfor %}
+      <div class="items-foot"><button class="btn btn-soft btn-sm" type="button" data-add-item>{{ icon("plus") }} Add another item</button><span>Estimated total <b data-grand>—</b></span></div>
+    </div>
+    <p class="small text-3 mt-2">{{ icon("info") }} The estimate sets the method: under 5,000 a single quotation, under 50,000 at least three quotations, and above that an open tender (in your organization's currency).</p>
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit" name="submit_now" value="1">{{ icon("send") }} Save and send for approval</button>
+      <button class="btn btn-soft" type="submit">{{ icon("save") }} Save draft</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.procurement_request', pr_id=pr.id) if pr else url_for('workspace.procurement') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

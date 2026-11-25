@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Timesheet{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.timesheet_approvals') }}">Timesheets to approve</a>{% endblock %}
+{% block page_title %}<span translate="no">{{ ts.user.full_name }}</span> · week of {{ ts.week_start.strftime("%d %b %Y") }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><span class="chip {{ {'draft': '', 'submitted': 'amber', 'approved': 'green', 'rejected': 'red'}[ts.status] }}"><span class="dot"></span>{{ ts.status_label }}</span>
+    <span class="fw-semibold">{{ ts.total_hours|qty }} h total</span></div>
+  <div class="table-wrap"><table class="table-ps ts-grid">
+    <thead><tr><th>Project / task</th>{% for d in days %}<th class="ts-day {{ 'weekend' if d.weekday() >= 5 }}">{{ d.strftime("%a") }}<span>{{ d.day }}</span></th>{% endfor %}<th class="num">Total</th></tr></thead>
+    <tbody>{% for row in rows %}
+      <tr><td class="cell-project"><div class="fw-semibold" translate="no">{% for x in ts.entries if (row.target == "t:" ~ x.task_id) or (row.target == "p:" ~ x.project_id and not x.task_id) %}{% if loop.first %}{{ x.task.title if x.task else x.project.name ~ " (general)" }}<div class="small text-3">{{ x.project.code }}</div>{% endif %}{% endfor %}</div>{% if row.note %}<div class="small text-3" translate="no">{{ row.note }}</div>{% endif %}</td>
+        {% for h in row.hours %}<td class="num">{{ h|qty if h else "" }}</td>{% endfor %}
+        <td class="num fw-semibold">{{ row.hours|select|sum|qty }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% if can_decide %}
+  <form method="post" class="mt-3" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label" for="note">Note (required when returning)</label>
+    <textarea class="form-control mb-3" id="note" name="note" rows="2" maxlength="2000"></textarea>
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit" name="action" value="approve">{{ icon("thumbs-up") }} Approve</button>
+      <button class="btn btn-soft" type="submit" name="action" value="return">{{ icon("undo-2") }} Return for correction</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

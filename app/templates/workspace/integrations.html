@@ -1,0 +1,61 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}Integrations{% endblock %}
+{% block page_title %}Integrations &amp; API{% endblock %}
+{% block content %}
+{% if new_token %}
+<div class="panel key-reveal">
+  <div class="panel-head"><h2 class="panel-title">{{ icon("key-round") }} Your new API key</h2></div>
+  <p>Copy it now and keep it somewhere safe, such as a password manager. <b>It won't be shown again.</b></p>
+  <div class="copy-row"><input class="form-control code" id="new-token" value="{{ new_token }}" readonly data-select-all aria-label="New API key"><button class="btn btn-primary" type="button" data-copy="#new-token">{{ icon("copy") }} Copy</button></div>
+</div>
+{% endif %}
+{% if not allowed %}<div class="announce warning">{{ icon("lock") }}<span>API access is included in the Professional plan and above. <a href="{{ url_for('workspace.subscription') }}">See plans</a></span></div>{% endif %}
+<div class="row g-4">
+  <div class="col-xl-7">
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("key-round") }} API keys</h2><p class="panel-sub">Let other systems read your data, such as Power BI, a donor dashboard or a data-collection tool</p></div></div>
+      {% if keys %}
+      <ul class="dash-list">{% for k in keys %}
+        <li><span class="activity-dot">{{ icon("key-round") }}</span><div class="min-w-0 flex-fill"><div class="fw-semibold" translate="no">{{ k.name }}</div>
+          <div class="small text-3"><span class="code">{{ k.prefix }}…</span> · {{ k.scope_labels|join(", ") }}</div>
+          <div class="small text-3">Created {{ k.created_at|dt("%d %b %Y") }}{% if k.created_by %} by <span translate="no">{{ k.created_by.full_name }}</span>{% endif %} · {% if k.last_used_at %}last used {{ k.last_used_at|dt }} ({{ k.use_count }} calls){% else %}never used{% endif %}{% if k.expires_at %} · expires {{ k.expires_at|dt("%d %b %Y") }}{% endif %}</div></div>
+          {% if k.is_active %}<form method="post" data-confirm="Tap again to revoke"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="revoke"><input type="hidden" name="key" value="{{ k.id }}"><button class="btn btn-danger-soft btn-sm" type="submit">Revoke</button></form>
+          {% else %}<span class="chip">{{ "Revoked" if k.revoked_at else "Expired" }}</span>{% endif %}</li>
+      {% endfor %}</ul>
+      {% else %}<div class="empty">{{ icon("key-round") }}<div>No API keys yet.</div></div>{% endif %}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("book-open") }} Using the API</h2></div>
+      <p>Send the key in the <span class="code">Authorization</span> header. Everything is read-only, except submitting indicator results, which wait for an M&amp;E Officer to verify them. Lists take <span class="code">limit</span> (up to 200) and <span class="code">offset</span>. The limit is 120 requests a minute per key.</p>
+      <pre class="code-block" translate="no">curl -H "Authorization: Bearer ps_live_…" \
+  {{ base }}/projects</pre>
+      <div class="table-wrap"><table class="table-ps">
+        <thead><tr><th>Endpoint</th><th>Access</th></tr></thead>
+        <tbody>
+          {% for path, scope in [("GET /projects", "projects"), ("GET /projects/{id}", "projects"), ("GET /projects/{id}/tasks", "projects"), ("GET /projects/{id}/budget", "finance"), ("GET /projects/{id}/expenses", "finance"), ("GET /indicators?project={id}", "me"), ("GET /indicators/{id}/values", "me"), ("POST /indicators/{id}/values", "me:write"), ("GET /risks?project={id}", "risks"), ("GET /issues?project={id}", "risks")] %}
+          <tr><td class="code nowrap">{{ path }}</td><td class="nowrap">{{ scope }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table></div>
+      <p class="small text-3 mt-2 mb-0">Submitting a result: <span class="code">POST</span> JSON like <span class="code">{"period_end": "2026-10-31", "value": 42, "source": "Kobo survey"}</span>.</p>
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("plus") }} Create a key</h2></div>
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}
+        {{ field(form.name, hint=form.name.description) }}
+        <fieldset class="mb-3"><legend class="form-label">{{ form.scopes.label.text }}</legend>
+          <div class="check-grid one">{% for value, label, selected, _ in form.scopes.iter_choices() %}
+            <label class="check-tile"><input class="form-check-input" type="checkbox" name="scopes" value="{{ value }}" {{ "checked" if selected }}><span>{{ label }}</span></label>
+          {% endfor %}</div>
+          <div class="form-hint">Give each key only what it needs.</div></fieldset>
+        {{ field(form.expires) }}
+        <button class="btn btn-primary w-100" type="submit" {{ "disabled" if not allowed }}>{{ icon("key-round") }} Create key</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

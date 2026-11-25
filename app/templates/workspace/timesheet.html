@@ -1,0 +1,75 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}My timesheet{% endblock %}
+{% block page_title %}My timesheet{% endblock %}
+{% block content %}
+{% set locked = ts and ts.is_locked %}
+<div class="panel">
+  <div class="panel-head">
+    <div class="d-flex align-items-center gap-2 cal-nav">
+      <a class="icon-btn" href="{{ url_for('workspace.timesheet', week=prev_week.isoformat()) }}" aria-label="Previous week">{{ icon("chevron-left") }}</a>
+      <h2 class="panel-title cal-title">{{ week.strftime("%d %b") }} – {{ days[6].strftime("%d %b %Y") }}</h2>
+      <a class="icon-btn" href="{{ url_for('workspace.timesheet', week=next_week.isoformat()) }}" aria-label="Next week">{{ icon("chevron-right") }}</a>
+      <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.timesheet') }}">This week</a>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      {% if ts %}<span class="chip {{ {'draft': '', 'submitted': 'amber', 'approved': 'green', 'rejected': 'red'}[ts.status] }}"><span class="dot"></span>{{ ts.status_label }}</span>{% endif %}
+      {% if approvals %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.timesheet_approvals') }}">{{ icon("inbox") }} To approve <span class="chip purple">{{ approvals }}</span></a>{% endif %}
+    </div>
+  </div>
+  {% if ts and ts.status == "rejected" and ts.decision_note %}<div class="announce warning">{{ icon("undo-2") }}<span>Returned by <span translate="no">{{ ts.decided_by.full_name if ts.decided_by else "an approver" }}</span>: “<span translate="no">{{ ts.decision_note }}</span>”. Correct it and submit again.</span></div>{% endif %}
+  {% if ts and ts.status == "approved" %}<div class="announce success">{{ icon("badge-check") }}<span>Approved by <span translate="no">{{ ts.decided_by.full_name if ts.decided_by else "—" }}</span> on {{ ts.decided_at|dt("%d %b %Y") }}.</span></div>{% endif %}
+  {% if not targets and not ts %}
+  <div class="empty">{{ icon("clock") }}<div>You're not on any open project yet. Once a project manager adds you to a project, you can log time against it here.</div></div>
+  {% else %}
+  <form method="post" id="ts-form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="table-wrap ts-wrap">
+      <table class="table-ps ts-grid" id="ts-grid">
+        <thead><tr><th class="ts-target-h">Project / task</th>
+          {% for d in days %}<th class="ts-day {{ 'today' if d == today }} {{ 'weekend' if d.weekday() >= 5 }}">{{ d.strftime("%a") }}<span>{{ d.day }}</span></th>{% endfor %}
+          <th class="ts-total-h">Total</th></tr></thead>
+        <tbody>
+          {% for row in rows %}{% set i = loop.index0 %}
+          <tr class="ts-row">
+            <td class="ts-target">
+              <select class="form-select" name="row-{{ i }}-target" aria-label="Project or task" {{ "disabled" if locked }}>
+                <option value="">Choose…</option>
+                {% for p, tasks in targets %}
+                <optgroup label="{{ p.code }} · {{ p.name }}">
+                  <option value="p:{{ p.id }}" {{ "selected" if row.target == "p:" ~ p.id }}>{{ p.name }} (general)</option>
+                  {% for t in tasks %}<option value="t:{{ t.id }}" {{ "selected" if row.target == "t:" ~ t.id }}>{{ t.title }}</option>{% endfor %}
+                </optgroup>
+                {% endfor %}
+              </select>
+              <input class="form-control ts-note" name="row-{{ i }}-note" value="{{ row.note }}" placeholder="Note (optional)" maxlength="255" aria-label="Note" {{ "disabled" if locked }}>
+            </td>
+            {% for h in row.hours %}<td class="ts-cell" data-label="{{ days[loop.index0].strftime('%a %d') }}"><input class="form-control ts-h" name="row-{{ i }}-h{{ loop.index0 }}" value="{{ h|qty if h else '' }}" inputmode="decimal" aria-label="{{ days[loop.index0].strftime('%A') }} hours" {{ "disabled" if locked }}></td>{% endfor %}
+            <td class="ts-row-total num">0</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot><tr><td class="fw-bold ts-foot-label">Daily total</td>{% for d in days %}<td class="ts-day-total num" data-day="{{ loop.index0 }}" data-label="{{ d.strftime('%a') }}">0</td>{% endfor %}<td class="ts-grand num fw-bold" data-label="Week">0</td></tr></tfoot>
+      </table>
+    </div>
+    {% if not locked %}
+    <div class="form-actions">
+      <button class="btn btn-soft" type="button" id="ts-add-row">{{ icon("plus") }} Add row</button>
+      <button class="btn btn-soft" type="submit" name="action" value="save">{{ icon("save") }} Save</button>
+      <button class="btn btn-primary" type="submit" name="action" value="submit">{{ icon("send") }} Submit week</button>
+    </div>
+    <p class="small text-3 mt-2 mb-0">{{ icon("info") }} Log hours in quarter-hour steps. Your weekly capacity is {{ current_user.weekly_hours|qty }} h.</p>
+    {% endif %}
+  </form>
+  {% endif %}
+</div>
+{% if recent %}
+<div class="panel">
+  <div class="panel-head"><h2 class="panel-title">{{ icon("history") }} Recent weeks</h2></div>
+  <ul class="activity-list">{% for r in recent %}
+    <li><span class="activity-dot">{{ icon("clock") }}</span><div class="activity-body flex-fill"><a class="what d-block" href="{{ url_for('workspace.timesheet', week=r.week_start.isoformat()) }}">Week of {{ r.week_start.strftime("%d %b %Y") }}</a><div class="meta">{{ r.total_hours|qty }} h · {{ r.status_label }}</div></div></li>
+  {% endfor %}</ul>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}{{ super() }}<script src="{{ url_for('static', filename='js/timesheet.js') }}"></script>{% endblock %}

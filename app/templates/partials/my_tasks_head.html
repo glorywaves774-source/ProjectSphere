@@ -1,0 +1,17 @@
+{% from "partials/macros.html" import icon %}
+<div class="panel-head">
+  <nav class="segmented" aria-label="Which tasks">
+    {% for key, label in [("open", "Open"), ("overdue", "Overdue"), ("done", "Done")] + ([("review", "To approve")] if can_review_any else []) %}
+    <a href="{{ url_for('workspace.my_tasks', tab=key, view=view) }}" {% if tab == key %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <nav class="segmented" aria-label="View">
+    <a href="{{ url_for('workspace.my_tasks', tab=tab, view='list') }}" {% if view == 'list' %}aria-current="page"{% endif %}>{{ icon("list") }}<span class="label-wide"> List</span></a>
+    <a href="{{ url_for('workspace.my_tasks', tab=tab, view='board') }}" {% if view == 'board' %}aria-current="page"{% endif %}>{{ icon("kanban") }}<span class="label-wide"> Board</span></a>
+  </nav>
+</div>
+<form class="search-row mb-3" method="get" role="search">
+  <input type="hidden" name="tab" value="{{ tab }}"><input type="hidden" name="view" value="{{ view }}">
+  <div class="search-box">{% from "partials/macros.html" import icon %}{{ icon("search") }}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Search tasks or projects" aria-label="Search tasks"></div>
+  <button class="btn btn-soft" type="submit">Search</button>
+</form>

@@ -1,0 +1,16 @@
+{# expects: messages, staff_view (bool) #}
+<ol class="thread">
+{% for m in messages %}
+  <li class="thread-msg {{ 'staff' if m.is_staff }} {{ 'internal' if m.is_internal }}">
+    <div class="thread-meta">
+      {% if m.is_staff and not staff_view %}<span class="avatar sm"><i data-lucide="life-buoy" aria-hidden="true"></i></span>
+      {% else %}<span class="avatar sm" translate="no">{{ m.author.initials if m.author else "?" }}</span>{% endif %}
+      <span class="who" translate="no">{{ (m.author.full_name if m.author else "Former user") if (staff_view or not m.is_staff) else "Kayron support" }}</span>
+      {% if m.is_staff %}<span class="chip purple">Support team</span>{% endif %}
+      {% if m.is_internal %}<span class="chip amber">Internal note</span>{% endif %}
+      <span class="when nowrap">{{ m.created_at|dt }}</span>
+    </div>
+    <div class="thread-body" translate="no">{{ m.body }}</div>
+  </li>
+{% endfor %}
+</ol>

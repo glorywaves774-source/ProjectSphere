@@ -1,0 +1,27 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, vendor_status %}
+{% block title %}Vendors{% endblock %}
+{% block page_title %}Vendors{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("store") }} Vendor register</h2><p class="panel-sub">{{ page.total }} vendor{{ "s" if page.total != 1 }}</p></div>
+    {% if is_officer %}<a class="btn btn-primary btn-sm" href="{{ url_for('workspace.vendor_new') }}">{{ icon("plus") }} Register vendor</a>{% endif %}</div>
+  <form class="search-row mb-3" method="get" role="search">
+    <div class="search-box">{{ icon("search") }}<input class="form-control" type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Search name, code or TIN" aria-label="Search vendors"></div>
+    <select class="form-select" name="status" data-autosubmit aria-label="Status"><option value="">Any status</option>{% for v, l in statuses %}<option value="{{ v }}" {{ "selected" if request.args.get("status") == v }}>{{ l }}</option>{% endfor %}</select>
+    <select class="form-select" name="category" data-autosubmit aria-label="Category"><option value="">Any category</option>{% for v, l in categories %}<option value="{{ v }}" {{ "selected" if request.args.get("category") == v }}>{{ l }}</option>{% endfor %}</select>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Vendor</th><th>Category</th><th>Status</th><th class="num">Orders</th><th class="num">Value</th><th>Rating</th></tr></thead>
+    <tbody>{% for v in page.items %}{% set st = stats[v.id] %}
+      <tr><td class="cell-project"><a class="fw-semibold d-block" href="{{ url_for('workspace.vendor', vendor_id=v.id) }}" translate="no">{{ v.name }}</a><div class="small text-3"><span class="code">{{ v.code }}</span>{% if v.contact_name %} · <span translate="no">{{ v.contact_name }}</span>{% endif %}</div></td>
+        <td class="nowrap">{{ v.category_label }}</td><td>{{ vendor_status(v) }}</td>
+        <td class="num">{{ st.count }}</td><td class="num">{{ st.value|money(current_user.organization.currency) if st.count else "—" }}</td>
+        <td class="nowrap">{% if st.rating %}<span class="stars" role="img" aria-label="{{ st.rating }} out of 5">{% for n in range(1, 6) %}<i class="{{ 'on' if n <= st.rating|round }}"></i>{% endfor %}</span> {{ st.rating }}{% else %}<span class="text-3">—</span>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "workspace.vendors") }}
+  {% else %}<div class="empty">{{ icon("store") }}<div>No vendors match.</div></div>{% endif %}
+</div>
+{% endblock %}

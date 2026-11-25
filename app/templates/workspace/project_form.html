@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ project.name if project else "New project" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.projects') }}">Projects</a>{% if project %} · {{ project.code }}{% endif %}{% endblock %}
+{% block page_title %}{{ ("Edit " ~ project.name) if project else "Register a project" }}{% endblock %}
+{% block content %}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-4">
+    <div class="col-xl-8">
+      <div class="panel">
+        <div class="panel-head"><div><h2 class="panel-title">{{ icon("folder-kanban") }} About the project</h2>{% if not project %}<p class="panel-sub">A project ID like PRJ-{{ now_utc().year }}-0001 is assigned automatically.</p>{% endif %}</div></div>
+        {{ field(form.name) }}
+        {{ field(form.summary, placeholder="e.g. Boreholes and hygiene training for 12 communities") }}
+        {{ field(form.description) }}
+        {{ field(form.objectives, hint=form.objectives.description) }}
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2 class="panel-title">{{ icon("calendar-range") }} Timeline & budget</h2></div>
+        <div class="row g-3">
+          <div class="col-md-6">{{ field(form.start_date) }}</div>
+          <div class="col-md-6">{{ field(form.end_date) }}</div>
+          <div class="col-md-8">{{ field(form.budget, hint="Total planned budget. Detailed budget lines arrive with the Finance module.") }}</div>
+          <div class="col-md-4">{{ field(form.currency) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="panel">
+        <div class="panel-head"><h2 class="panel-title">{{ icon("sliders-horizontal") }} Classification</h2></div>
+        {% if not project %}{{ field(form.status) }}{% endif %}
+        {{ field(form.priority) }}
+        {{ field(form.category_id) }}
+        {{ field(form.department_id) }}
+        {{ field(form.manager_id) }}
+        {{ field(form.location, hint=form.location.description) }}
+        {{ field(form.funder) }}
+      </div>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">{{ icon("save") }} {{ "Save project" if project else "Register project" }}</button>
+    <a class="btn btn-soft" href="{{ url_for('workspace.project', project_id=project.id) if project else url_for('workspace.projects') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

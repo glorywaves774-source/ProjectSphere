@@ -1,0 +1,29 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Departments{% endblock %}
+{% block page_title %}Departments{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("network") }} Departments</h2><p class="panel-sub">Group your people into units, programmes or offices.</p></div>
+    {% if current_user.can("org.manage") %}<a class="btn btn-primary" href="{{ url_for('workspace.department_new') }}">{{ icon("plus") }} New department</a>{% endif %}</div>
+  {% if depts %}
+  <div class="row g-3">
+    {% for d in depts %}
+    <div class="col-md-6 col-xxl-4">
+      <a class="role-card dept-card d-block" href="{{ url_for('workspace.department', dept_id=d.id) }}">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div><h3 translate="no">{{ d.name }}</h3>{% if d.code %}<span class="chip mt-1">{{ d.code }}</span>{% endif %}</div>
+          <span class="chip purple nowrap">{{ counts.get(d.id, 0) }} {{ "person" if counts.get(d.id, 0) == 1 else "people" }}</span>
+        </div>
+        <div class="small text-3 mt-2">Head: <span translate="no">{{ d.head.full_name if d.head else "not set" }}</span></div>
+        {% if d.description %}<p class="small text-2 mt-2 mb-0" translate="no">{{ d.description|truncate(120) }}</p>{% endif %}
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% if counts.get(None) %}<p class="small text-3 mt-3 mb-0">{{ counts.get(None) }} active {{ "person has" if counts.get(None) == 1 else "people have" }} no department. <a href="{{ url_for('workspace.team', dept=0) }}">See who</a></p>{% endif %}
+  {% else %}
+  <div class="empty">{{ icon("network") }}<div>No departments yet.{% if current_user.can("org.manage") %} Create your first one, such as Programmes, Finance or Field Operations.{% endif %}</div></div>
+  {% endif %}
+</div>
+{% endblock %}

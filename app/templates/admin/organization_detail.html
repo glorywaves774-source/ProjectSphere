@@ -1,0 +1,126 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, meter, sub_chip, activity_icon, field %}
+{% block title %}{{ org.name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('admin.organizations') }}">Organizations</a>{% endblock %}
+{% block page_title %}<span translate="no">{{ org.name }}</span>{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("building") }} Organization</h2>{{ sub_chip(org.subscription, org) }}</div>
+      <dl class="dl-grid">
+        <div><dt>Type</dt><dd>{{ org.type_label }}</dd></div>
+        <div><dt>Country</dt><dd>{{ org.country }}</dd></div>
+        <div><dt>Contact</dt><dd translate="no">{{ org.email or "—" }}{% if org.phone %} · {{ org.phone }}{% endif %}</dd></div>
+        <div><dt>Workspace ID</dt><dd class="code">{{ org.slug }}</dd></div>
+        <div><dt>Joined</dt><dd>{{ org.created_at|dt("%d %b %Y") }}</dd></div>
+        {% if org.is_suspended %}<div><dt>Suspension reason</dt><dd>{{ org.suspended_reason or "—" }}</dd></div>{% endif %}
+      </dl>
+      <details class="edit-details mt-3">
+        <summary>{{ icon("pencil") }} Edit details</summary>
+        <form method="post" action="{{ url_for('admin.organization_edit', org_id=org.id) }}" novalidate class="mt-3">
+          {{ edit_form.hidden_tag() }}
+          <div class="row g-3">
+            <div class="col-md-6">{{ field(edit_form.name) }}</div>
+            <div class="col-md-6">{{ field(edit_form.org_type) }}</div>
+            <div class="col-md-4">{{ field(edit_form.country) }}</div>
+            <div class="col-md-4">{{ field(edit_form.email) }}</div>
+            <div class="col-md-4">{{ field(edit_form.phone) }}</div>
+          </div>
+          <button class="btn btn-primary" type="submit">{{ icon("save") }} Save details</button>
+        </form>
+      </details>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("credit-card") }} Subscription</h2>
+        <p class="panel-sub">Paid invoices update this automatically. Change it by hand only for special arrangements.</p></div></div>
+      <form method="post" action="{{ url_for('admin.organization_subscription', org_id=org.id) }}" novalidate>
+        {{ sub_form.hidden_tag() }}
+        <div class="row g-3">
+          <div class="col-md-4">{{ field(sub_form.plan_id) }}</div>
+          <div class="col-md-4">{{ field(sub_form.status) }}</div>
+          <div class="col-md-4">{{ field(sub_form.billing_cycle) }}</div>
+          <div class="col-md-6">{{ field(sub_form.trial_ends_at, hint="Needed when the status is Trial.") }}</div>
+          <div class="col-md-6">{{ field(sub_form.current_period_end, hint="For paying customers: the date they've paid up to.") }}</div>
+        </div>
+        <button class="btn btn-primary" type="submit">{{ icon("save") }} Update subscription</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("receipt") }} Invoices</h2></div>
+      {% if invoices %}<ul class="dash-list">{% for i in invoices %}
+        <li><div class="min-w-0 flex-fill"><a class="fw-semibold" href="{{ url_for('admin.billing_invoice', invoice_id=i.id) }}">{{ i.number }}</a> <span class="small text-3">{{ i.description }}</span>
+          <div class="small text-3">{{ i.created_at|dt("%d %b %Y") }} · {{ i.amount|money(i.currency) }}</div></div>
+          <span class="chip {{ {'paid': 'green', 'open': 'red' if i.is_overdue else 'amber', 'void': ''}[i.status] }}">{{ "Overdue" if i.is_overdue else i.status_label }}</span></li>
+      {% endfor %}</ul>{% else %}<p class="text-3">No invoices yet.</p>{% endif %}
+      <details class="edit-details mt-3">
+        <summary>{{ icon("plus") }} Issue an invoice</summary>
+        <form method="post" action="{{ url_for('admin.organization_invoice', org_id=org.id) }}" novalidate class="mt-3">
+          {{ inv_form.hidden_tag() }}
+          {{ field(inv_form.description, placeholder="e.g. Enterprise plan, 12 months, as agreed") }}
+          <div class="row g-3">
+            <div class="col-6 col-md-4">{{ field(inv_form.amount) }}</div>
+            <div class="col-6 col-md-4">{{ field(inv_form.currency) }}</div>
+            <div class="col-md-4">{{ field(inv_form.due_date) }}</div>
+            <div class="col-md-4">{{ field(inv_form.plan_id, hint="When paid, the organization moves to this plan.") }}</div>
+            <div class="col-6 col-md-4">{{ field(inv_form.cycle) }}</div>
+            <div class="col-6 col-md-4">{{ field(inv_form.period_start) }}</div>
+          </div>
+          <button class="btn btn-primary" type="submit">{{ icon("send") }} Issue invoice</button>
+        </form>
+      </details>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("users") }} Users ({{ users|length }})</h2></div>
+      <div class="table-wrap"><table class="table-ps">
+        <thead><tr><th>Name</th><th>Roles</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>{% for u in users %}
+          <tr><td><div class="cell-user"><span class="avatar sm" translate="no">{{ u.initials }}</span><div><div class="name" translate="no">{{ u.full_name }}</div><div class="sub" translate="no">{{ u.email }}</div><div class="sub">Last sign-in <span class="nowrap">{{ u.last_login_at|dt }}</span></div></div></div></td>
+          <td class="small">{{ u.role_names|join(", ") }}</td>
+          <td>{% if not u.is_active_user %}<span class="chip">Deactivated</span>{% elif u.locked_until and u.locked_until > now %}<span class="chip red">Locked</span>{% elif u.must_change_password %}<span class="chip amber">Temporary password</span>{% else %}<span class="chip green"><span class="dot"></span>Active</span>{% endif %}</td>
+          <td>{% include "admin/_user_actions.html" %}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("shield") }} Access</h2></div>
+      {% if org.is_suspended %}
+      <p class="small text-3">Members cannot sign in while suspended.</p>
+      <form method="post" action="{{ url_for('admin.organization_status', org_id=org.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="reactivate">
+        <button class="btn btn-success-soft w-100" type="submit">{{ icon("play") }} Reactivate</button>
+      </form>
+      {% else %}
+      <form method="post" action="{{ url_for('admin.organization_status', org_id=org.id) }}" data-confirm="Tap again to suspend">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="suspend">
+        <label class="form-label" for="reason">Reason (shown in the audit log)</label>
+        <input class="form-control mb-3" id="reason" name="reason" maxlength="255" placeholder="e.g. Unpaid invoice">
+        <button class="btn btn-danger-soft w-100" type="submit">Suspend organization</button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("gauge") }} Usage</h2></div>
+      {% for u in usage %}{{ meter(u) }}{% endfor %}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("life-buoy") }} Support requests</h2></div>
+      {% if tickets %}<ul class="activity-list">{% for t in tickets %}
+        <li><span class="activity-dot">{{ icon("message-square") }}</span><div class="activity-body"><a class="what d-block" href="{{ url_for('admin.support_ticket', ticket_id=t.id) }}">{{ t.reference }} · {{ t.subject }}</a><div class="meta">{{ t.status_label }} · <span class="nowrap">{{ t.last_activity_at|dt }}</span></div></div></li>
+      {% endfor %}</ul>{% else %}<div class="empty">No support requests.</div>{% endif %}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("history") }} Recent events</h2></div>
+      {% if events %}<ul class="activity-list">{% for e in events %}
+        <li><span class="activity-dot">{{ icon(activity_icon(e.action)) }}</span><div class="activity-body"><div class="what">{{ e.summary or e.action }}</div><div class="meta nowrap">{{ e.created_at|dt }}</div></div></li>
+      {% endfor %}</ul>{% else %}<div class="empty">No events.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

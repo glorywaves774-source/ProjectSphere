@@ -1,0 +1,27 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ "Edit result" if item else "Add to the results framework" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_me', project_id=project.id) }}">{{ project.code }} M&amp;E</a>{% endblock %}
+{% block page_title %}{{ ("Edit " ~ item.level_label|lower ~ " " ~ item.code) if item else "Add to the results framework" }}{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="row g-3">
+      <div class="col-sm-5">{{ field(form.level, hint="Goal: the long-term change. Outcome: what changes for people. Output: what the project delivers.") }}</div>
+      {% if form.level.data != "goal" %}<div class="col-sm-7">{{ field(form.parent_id, hint="An outcome contributes to the goal; an output to an outcome." if form.parent_id.choices|length > 1 else ("Add an outcome first." if form.level.data == "output" else None)) }}</div>{% endif %}
+    </div>
+    {{ field(form.statement, hint=form.statement.description) }}
+    {{ field(form.assumptions, hint=form.assumptions.description) }}
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("save") }} Save</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.project_me', project_id=project.id) }}">Cancel</a>
+    </div>
+  </form>
+  {% if item %}
+  <form method="post" class="mt-3" data-confirm="Tap again to remove"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete">
+    <button class="btn btn-danger-soft btn-sm" type="submit">{{ icon("trash-2") }} Remove this result</button>
+    <span class="small text-3 ms-2">Its indicators are kept, unlinked.</span></form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, pr_status %}
+{% block title %}Procurement{% endblock %}
+{% block page_title %}Procurement{% endblock %}
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-lg-3"><a class="kpi kpi-link" href="{{ url_for('workspace.procurement', status='submitted') }}"><div class="kpi-label"><span class="kpi-icon amber">{{ icon("hourglass") }}</span>Waiting for approval</div><div class="kpi-value">{{ o.waiting }}</div><div class="kpi-foot">{{ o.late }} past their needed-by date</div></a></div>
+  <div class="col-6 col-lg-3"><a class="kpi kpi-link" href="{{ url_for('workspace.procurement', status='approved') }}"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("file-search") }}</span>To award</div><div class="kpi-value">{{ o.to_award }}</div><div class="kpi-foot">Approved, collecting quotations</div></a></div>
+  <div class="col-6 col-lg-3"><a class="kpi kpi-link" href="{{ url_for('workspace.procurement', status='ordered') }}"><div class="kpi-label"><span class="kpi-icon">{{ icon("truck") }}</span>On order</div><div class="kpi-value">{{ o.open_orders }}</div><div class="kpi-foot">{{ o.ordered_year }} orders this year</div></a></div>
+  <div class="col-6 col-lg-3"><a class="kpi kpi-link" href="{{ url_for('workspace.vendors') }}"><div class="kpi-label"><span class="kpi-icon green">{{ icon("store") }}</span>Approved vendors</div><div class="kpi-value">{{ o.vendors }}</div><div class="kpi-foot">{{ o.vendors_pending }} waiting for approval</div></a></div>
+</div>
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("shopping-cart") }} Purchase requests</h2><p class="panel-sub">{{ page.total }} request{{ "s" if page.total != 1 }}{% if o.savings > 0 %} · {{ o.savings|money(current_user.organization.currency) }} saved against estimates this year{% endif %}</p></div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.procurement_xlsx') }}">{{ icon("file-spreadsheet") }} Excel</a>
+      {% if can_add %}<a class="btn btn-primary btn-sm" href="{{ url_for('workspace.procurement_new', project=request.args.get('project')) }}">{{ icon("plus") }} New request</a>{% endif %}</div></div>
+  <form class="search-row mb-3" method="get" role="search">
+    <div class="search-box">{{ icon("search") }}<input class="form-control" type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Search title, PR or PO number" aria-label="Search requests"></div>
+    <select class="form-select" name="project" data-autosubmit aria-label="Project"><option value="">All projects</option>{% for p in projects %}<option value="{{ p.id }}" {{ "selected" if request.args.get("project")|int == p.id }}>{{ p.name }}</option>{% endfor %}</select>
+    <select class="form-select" name="status" data-autosubmit aria-label="Status"><option value="">Any status</option><option value="active" {{ "selected" if status == "active" }}>In progress</option>{% for v, l in statuses %}<option value="{{ v }}" {{ "selected" if status == v }}>{{ l }}</option>{% endfor %}</select>
+    <label class="form-check chip-toggle"><input class="form-check-input" type="checkbox" name="mine" value="1" data-autosubmit {{ "checked" if request.args.get("mine") == "1" }}> My requests</label>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Request</th><th>Needed by</th><th class="num">Estimate</th><th class="num">Awarded</th><th>Status</th><th>Requested by</th></tr></thead>
+    <tbody>{% for p in page.items %}
+      <tr><td class="cell-project"><a class="fw-semibold d-block" href="{{ url_for('workspace.procurement_request', pr_id=p.id) }}" translate="no">{{ p.title }}</a>
+          <div class="small text-3"><span class="code">{{ p.reference }}</span>{% if p.po_number %} · <span class="code">{{ p.po_number }}</span>{% endif %} · {{ p.project.code }} · {{ p.method_label }}</div></td>
+        <td class="date {{ 'text-danger' if p.needed_by and p.needed_by < now_utc().date() and p.status in ('submitted', 'approved', 'ordered') }}">{{ p.needed_by.strftime("%d %b %Y") if p.needed_by else "—" }}</td>
+        <td class="num">{{ p.estimated_total|money(p.project.currency) }}</td>
+        <td class="num fw-semibold">{{ p.awarded_amount_project|money(p.project.currency) if p.awarded_amount_project is not none else "—" }}</td>
+        <td><div class="d-flex gap-1 flex-wrap">{{ pr_status(p) }}{% if p.over_budget %}<span class="chip red">Over budget</span>{% endif %}</div></td>
+        <td class="nowrap" translate="no">{{ p.requested_by.full_name if p.requested_by else "—" }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "workspace.procurement") }}
+  {% else %}<div class="empty">{{ icon("shopping-cart") }}<div>No purchase requests match.</div></div>{% endif %}
+</div>
+{% endblock %}

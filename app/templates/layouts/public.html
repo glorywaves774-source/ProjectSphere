@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+{% from "partials/macros.html" import icon, theme_button, flashes, brand %}
+{% block body_class %}public no-tabs{% endblock %}
+{% block body %}
+<header class="public-nav">
+  {{ brand("/") }}
+  <div class="tools">
+    {{ theme_button() }}
+    <a class="btn btn-soft" href="{{ url_for('auth.login') }}">Sign in</a>
+    {% if SIGNUP_OPEN %}<a class="btn btn-primary" href="{{ url_for('auth.register') }}">Start free trial</a>
+    {% else %}<a class="btn btn-primary" href="mailto:{{ SALES_EMAIL }}">Contact us</a>{% endif %}
+  </div>
+</header>
+<main id="main">{% block content %}{% endblock %}</main>
+<footer class="site-footer">© {{ COMPANY_NAME }} · {{ APP_NAME }} · {{ TAGLINE }}</footer>
+{{ flashes() }}
+{% endblock %}

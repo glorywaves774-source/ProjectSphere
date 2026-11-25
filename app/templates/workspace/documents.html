@@ -1,0 +1,40 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, doc_icon %}
+{% block title %}Documents{% if project %} · {{ project.name }}{% endif %}{% endblock %}
+{% block crumb %}{% if project %}<a href="{{ url_for('workspace.projects') }}">Projects</a> · {{ project.code }}{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block page_title %}{% if project %}<span translate="no">{{ project.name }}</span>{% else %}Documents{% endif %}{% endblock %}
+{% block content %}
+{% if project %}{% include "partials/project_tabs.html" %}{% endif %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("folder-open") }} {{ "Project documents" if project else "Document library" }}</h2>
+      <p class="panel-sub">{{ page.total }} document{{ "s" if page.total != 1 }}{% if used is not none %} · {{ used|filesize }} used{% if limit_mb %} of {{ limit_mb }} MB on your plan{% endif %}{% endif %}</p></div>
+    {% if can_upload %}<a class="btn btn-primary" href="{{ url_for('workspace.document_new', project=project.id if project else None) }}">{{ icon("upload") }} Upload</a>{% endif %}</div>
+  {% if used is not none and limit_mb %}{% set pct = (used / (limit_mb * 1048576) * 100)|round(1) %}
+  <div class="progress-line mb-3" role="img" aria-label="Storage used: {{ pct }}%"><span class="bar {{ 'red' if pct >= 90 else ('amber' if pct >= 75) }}" data-width="{{ [pct, 100]|min }}"></span></div>{% endif %}
+  <form class="search-row mb-3" method="get" role="search">
+    <div class="search-box">{{ icon("search") }}<input class="form-control" type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Search titles and descriptions" aria-label="Search documents"></div>
+    <select class="form-select" name="category" data-autosubmit aria-label="Category">
+      <option value="">Any category</option>
+      {% for v, l in categories %}<option value="{{ v }}" {{ "selected" if request.args.get("category") == v }}>{{ l }}</option>{% endfor %}
+    </select>
+    {% if not project and current_user.can("projects.view") %}
+    <select class="form-select" name="project" data-autosubmit aria-label="Project">
+      <option value="">Everywhere</option><option value="org" {{ "selected" if request.args.get("project") == "org" }}>Organization library only</option>
+      {% for p in projects %}<option value="{{ p.id }}" {{ "selected" if request.args.get("project")|int == p.id }}>{{ p.name }}</option>{% endfor %}
+    </select>{% endif %}
+    <label class="form-check chip-toggle"><input class="form-check-input" type="checkbox" name="archived" value="1" data-autosubmit {{ "checked" if request.args.get("archived") == "1" }}> Archived</label>
+    <button class="btn btn-soft" type="submit">Filter</button>
+  </form>
+  {% if page.items %}
+  <ul class="doc-list">{% for d in page.items %}{% set v = d.current %}
+    <li><span class="doc-icon ext-{{ v.extension if v else 'none' }}">{{ doc_icon(v.extension if v else "") }}</span>
+      <div class="doc-body"><a class="fw-semibold d-block name" href="{{ url_for('workspace.document', doc_id=d.id) }}" translate="no">{{ d.title }}</a>
+        <div class="small text-3"><span class="chip">{{ d.category_label }}</span>{% if not project %} · {% if d.project %}<span translate="no">{{ d.project.code }}</span>{% else %}Organization{% endif %}{% endif %}
+          {% if v %} · v{{ v.version_no }} · {{ v.extension|upper }} · {{ v.size_bytes|filesize }}{% endif %} · <span class="nowrap">{{ d.updated_at|dt }}</span></div></div>
+      {% if v %}<a class="icon-btn sm" href="{{ url_for('workspace.document_download', doc_id=d.id, version_id=v.id) }}" aria-label="Download {{ d.title }}">{{ icon("download") }}</a>{% endif %}</li>
+  {% endfor %}</ul>
+  {% if project %}{{ pager(page, "workspace.project_documents", project_id=project.id) }}{% else %}{{ pager(page, "workspace.documents") }}{% endif %}
+  {% else %}<div class="empty">{{ icon("folder-open") }}<div>{{ "No documents match." if request.args else "No documents yet." }}</div>
+    {% if can_upload and not request.args %}<a class="btn btn-soft mt-3" href="{{ url_for('workspace.document_new', project=project.id if project else None) }}">{{ icon("upload") }} Upload the first one</a>{% endif %}</div>{% endif %}
+</div>
+{% endblock %}

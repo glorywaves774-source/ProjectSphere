@@ -1,0 +1,70 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager %}
+{% block title %}Team{% endblock %}
+{% block page_title %}Team{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head">
+    <div><h2 class="panel-title">{{ icon("users") }} Team members</h2><p class="panel-sub">{{ page.total }} {{ "person" if page.total == 1 else "people" }} shown</p></div>
+    {% if current_user.can("users.manage") %}
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-soft" href="{{ url_for('workspace.staff_new') }}">{{ icon("user-round-plus") }} Add staff</a>
+      <a class="btn btn-primary" href="{{ url_for('workspace.invite') }}">{{ icon("mail-plus") }} Invite</a>
+    </div>
+    {% endif %}
+  </div>
+  <form class="search-row mb-3" method="get" role="search">
+    <div class="search-box">{{ icon("search") }}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Search name, email, job title or staff ID" aria-label="Search team"></div>
+    <select class="form-select" name="dept" data-autosubmit aria-label="Department">
+      <option value="">All departments</option>
+      {% for d in departments %}<option value="{{ d.id }}" {{ "selected" if dept == d.id }}>{{ d.name }}</option>{% endfor %}
+      <option value="0" {{ "selected" if dept == 0 }}>No department</option>
+    </select>
+    <select class="form-select" name="status" data-autosubmit aria-label="Status">
+      <option value="active" {{ "selected" if status == "active" }}>Active</option>
+      <option value="inactive" {{ "selected" if status == "inactive" }}>Deactivated</option>
+      <option value="all" {{ "selected" if status == "all" }}>Everyone</option>
+    </select>
+    <button class="btn btn-soft" type="submit">Search</button>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap">
+    <table class="table-ps">
+      <thead><tr><th>Name</th><th>Department</th><th>Roles</th><th>Status</th><th>Last sign-in</th></tr></thead>
+      <tbody>
+        {% for u in page.items %}
+        <tr>
+          <td><div class="cell-user"><span class="avatar sm" translate="no">{{ u.initials }}</span><div><a class="name d-block" href="{{ url_for('workspace.member', user_id=u.id) }}" translate="no">{{ u.full_name }}</a><div class="sub" translate="no">{{ u.email }}{% if u.job_title %} · {{ u.job_title }}{% endif %}</div></div></div></td>
+          <td class="nowrap" translate="no">{{ u.department.name if u.department else "—" }}</td>
+          <td><div class="d-flex flex-wrap gap-1">{% for r in u.role_names %}<span class="chip purple">{{ r }}</span>{% endfor %}</div></td>
+          <td>{% if not u.is_active_user %}<span class="chip">Deactivated</span>{% elif u.must_change_password %}<span class="chip amber">Not signed in yet</span>{% else %}<span class="chip green"><span class="dot"></span>Active</span>{% endif %}</td>
+          <td class="date">{{ u.last_login_at|dt }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ pager(page, "workspace.team") }}
+  {% else %}
+  <div class="empty">{{ icon("search-x") }}<div>No team members match.</div></div>
+  {% endif %}
+</div>
+
+{% if invitations %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("mail") }} Invitations</h2><p class="panel-sub">Open invitations reserve a seat on your plan until they're accepted, revoked or expire.</p></div></div>
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Invited</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
+    <tbody>{% for i in invitations %}
+      <tr><td><div class="fw-semibold" translate="no">{{ i.full_name or i.email }}</div><div class="small text-3" translate="no">{{ i.email }}{% if i.invited_by %} · by {{ i.invited_by.full_name }}{% endif %}</div></td>
+        <td>{% if i.status == "pending" %}<span class="chip blue"><span class="dot"></span>Pending</span>{% else %}<span class="chip">Expired</span>{% endif %}</td>
+        <td class="date">{{ i.expires_at|dt("%d %b %Y") }}</td>
+        <td><div class="row-actions">
+          <form method="post" action="{{ url_for('workspace.invitation_action', inv_id=i.id, action='resend') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-soft btn-sm" type="submit">{{ icon("send") }} {{ "Resend" if i.status == "pending" else "Renew" }}</button></form>
+          <form method="post" action="{{ url_for('workspace.invitation_action', inv_id=i.id, action='revoke') }}" data-confirm="Tap again"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-danger-soft btn-sm" type="submit">{{ icon("x") }} Revoke</button></form>
+        </div></td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</div>
+{% endif %}
+{% endblock %}

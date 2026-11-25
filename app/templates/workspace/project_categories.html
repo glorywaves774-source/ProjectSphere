@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}Project categories{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.projects') }}">Projects</a>{% endblock %}
+{% block page_title %}Project categories{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-7"><div class="panel">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("tags") }} Categories</h2></div>
+    <ul class="activity-list">
+      {% for c in cats %}
+      <li><span class="cat-dot lg" data-color="{{ c.color }}"></span>
+        <div class="activity-body flex-fill"><a class="what d-block" href="{{ url_for('workspace.projects', category=c.id, status='all') }}" translate="no">{{ c.name }}</a><div class="meta">{{ counts.get(c.id, 0) }} project{{ "s" if counts.get(c.id, 0) != 1 }}</div></div>
+        {% if can_edit %}<form method="post" data-confirm="Delete?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="delete" value="{{ c.id }}"><button class="icon-btn sm" type="submit" aria-label="Delete {{ c.name }}">{{ icon("trash-2") }}</button></form>{% endif %}
+      </li>
+      {% else %}<li class="empty">No categories yet.</li>{% endfor %}
+    </ul>
+  </div></div>
+  {% if can_edit %}
+  <div class="col-xl-5"><div class="panel">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("plus") }} Add a category</h2></div>
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+      {{ field(form.name) }}
+      <div class="mb-3"><label class="form-label" for="color">Colour</label>
+        <input class="form-control form-control-color" type="color" id="color" name="color" value="{{ form.color.data or '#6d5bf6' }}">
+        {% for e in form.color.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}</div>
+      <button class="btn btn-primary" type="submit">{{ icon("plus") }} Add category</button>
+    </form>
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}

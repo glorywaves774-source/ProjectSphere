@@ -1,0 +1,18 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}New support request{% endblock %}
+{% block page_title %}New support request{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.subject, placeholder="A short summary") }}
+    <div class="row g-3"><div class="col-md-6">{{ field(form.category) }}</div><div class="col-md-6">{{ field(form.priority) }}</div></div>
+    {{ field(form.body, hint="Tell us what happened and what you expected. Please don't include passwords.") }}
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("send") }} Send request</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.support') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

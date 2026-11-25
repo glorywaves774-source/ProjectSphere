@@ -1,0 +1,67 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, visit_status, visit_rating, num %}
+{% block title %}M&E results{% endblock %}
+{% block page_title %}Monitoring &amp; evaluation{% endblock %}
+{% block topbar_actions %}<a class="btn btn-soft btn-sm hide-xs" href="{{ url_for('workspace.me_xlsx') }}">{{ icon("file-spreadsheet") }} Excel</a>{% endblock %}
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon">{{ icon("target") }}</span>Indicators</div><div class="kpi-value">{{ d.indicators }}</div><div class="kpi-foot">Across {{ d.rows|length }} open project{{ "s" if d.rows|length != 1 }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon green">{{ icon("circle-check") }}</span>On track</div><div class="kpi-value">{{ d.totals.achieved + d.totals.on_track }}</div><div class="kpi-foot">{{ d.totals.achieved }} already achieved</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon red">{{ icon("triangle-alert") }}</span>Need attention</div><div class="kpi-value">{{ d.totals.at_risk + d.totals.off_track }}</div><div class="kpi-foot">{{ d.overdue }} with data overdue</div></div></div>
+  <div class="col-6 col-lg-3"><a class="kpi kpi-link" href="{{ url_for('workspace.visits') }}"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("map-pin") }}</span>Field visits</div><div class="kpi-value">{{ d.visits_90 }}</div><div class="kpi-foot">last 90 days · {{ d.visits_waiting }} awaiting review</div></a></div>
+</div>
+
+{% if pending %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("badge-check") }} Waiting for verification</h2><p class="panel-sub">Results reported by the field team</p></div></div>
+  <ul class="dash-list">{% for v in pending %}
+    <li><span class="activity-dot">{{ icon("hourglass") }}</span><div class="min-w-0 flex-fill"><a class="fw-semibold d-block" href="{{ url_for('workspace.indicator', indicator_id=v.indicator_id) }}"><span class="code">{{ v.indicator.code }}</span> <span translate="no">{{ v.indicator.name }}</span></a>
+      <div class="small text-3">{{ num(v.value, v.indicator.is_percent) }} for the period ending {{ v.period_end.strftime("%d %b %Y") }} · <span translate="no">{{ v.reported_by.full_name if v.reported_by else "Former user" }}</span> · {{ v.indicator.project.code }}</div></div></li>
+  {% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("folder-kanban") }} Projects</h2><a class="btn btn-soft btn-sm d-sm-none" href="{{ url_for('workspace.me_xlsx') }}">{{ icon("file-spreadsheet") }} Excel</a></div>
+      {% if d.rows %}
+      <div class="table-wrap"><table class="table-ps">
+        <thead><tr><th>Project</th><th class="num">Indicators</th><th>Achievement</th><th class="num">Achieved</th><th class="num">On track</th><th class="num">At risk</th><th class="num">Off track</th><th></th></tr></thead>
+        <tbody>{% for r in d.rows %}
+          <tr><td class="cell-project"><a class="fw-semibold d-block" href="{{ url_for('workspace.project_me', project_id=r.project.id) }}" translate="no">{{ r.project.name }}</a><span class="small text-3 code">{{ r.project.code }}</span></td>
+            <td class="num">{{ r.total }}</td>
+            <td class="nowrap">{% if r.avg_achievement is not none %}<div class="progress-line w-sm" role="img" aria-label="{{ r.avg_achievement }}% average achievement"><span class="bar" data-width="{{ r.avg_achievement }}"></span></div><span class="small">{{ r.avg_achievement }}%</span>{% else %}<span class="text-3">—</span>{% endif %}</td>
+            <td class="num">{{ r.counts.achieved }}</td><td class="num">{{ r.counts.on_track }}</td>
+            <td class="num {{ 'text-warning-strong fw-semibold' if r.counts.at_risk }}">{{ r.counts.at_risk }}</td>
+            <td class="num {{ 'text-danger fw-semibold' if r.counts.off_track }}">{{ r.counts.off_track }}</td>
+            <td class="nowrap text-end"><a class="icon-btn sm" href="{{ url_for('workspace.project_me_pdf', project_id=r.project.id) }}" aria-label="PDF report for {{ r.project.name }}" title="PDF report">{{ icon("file-text") }}</a></td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% else %}<div class="empty">{{ icon("folder-kanban") }}<div>No open projects.</div></div>{% endif %}
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("chart-pie") }} Indicator status</h2></div>
+      {% if d.indicators %}<div class="chart-box sm"><canvas data-chart="doughnut" data-source="c-status" role="img" aria-label="Indicators by status"></canvas></div>
+      <script type="application/json" id="c-status">{{ chart|tojson }}</script>
+      {% else %}<div class="empty">{{ icon("target") }}<div>No indicators yet. Open a project's M&amp;E tab to set up its results framework.</div></div>{% endif %}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("map-pin") }} Recent visits</h2><a class="small fw-semibold" href="{{ url_for('workspace.visits') }}">View all</a></div>
+      {% if d.recent_visits %}<ul class="dash-list">{% for v in d.recent_visits %}
+        <li><div class="min-w-0 flex-fill"><a class="fw-semibold d-block" href="{{ url_for('workspace.visit', visit_id=v.id) }}" translate="no">{{ v.location }}</a>
+          <div class="small text-3">{{ v.visit_date.strftime("%d %b") }} · {{ v.project.code }}</div><div class="d-flex gap-1 flex-wrap mt-1">{{ visit_rating(v) }}{{ visit_status(v) }}</div></div></li>
+      {% endfor %}</ul>{% else %}<div class="empty">{{ icon("map-pin") }}<div>No visits yet.</div></div>{% endif %}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("clipboard-check") }} Evaluations in progress</h2></div>
+      {% if d.evaluations %}<ul class="dash-list">{% for e in d.evaluations %}
+        <li><div class="min-w-0"><a class="fw-semibold d-block" href="{{ url_for('workspace.evaluation', evaluation_id=e.id) }}" translate="no">{{ e.title }}</a>
+          <div class="small text-3">{{ e.kind_label }} · {{ e.project.code }}{% if e.start_date %} · {{ e.start_date.strftime("%b %Y") }}{% endif %}</div></div></li>
+      {% endfor %}</ul>{% else %}<div class="empty">{{ icon("clipboard-check") }}<div>None planned.</div></div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

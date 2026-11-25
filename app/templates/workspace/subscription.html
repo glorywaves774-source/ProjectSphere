@@ -1,0 +1,74 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, meter, sub_chip %}
+{% block title %}Subscription{% endblock %}
+{% block page_title %}Subscription &amp; billing{% endblock %}
+{% block content %}
+{% set open_inv = invoices|selectattr("status", "equalto", "open")|first %}
+{% if sub and sub.status == "past_due" %}<div class="announce warning">{{ icon("alert-triangle") }}<span>Your subscription is past due, so new work is paused. Nothing has been deleted.{% if open_inv %} <a href="{{ url_for('workspace.invoice', invoice_id=open_inv.id) }}">Pay {{ open_inv.number }}</a> to carry on.{% endif %}</span></div>
+{% elif open_inv %}<div class="announce">{{ icon("receipt") }}<span>Invoice {{ open_inv.number }} for {{ open_inv.amount|money(open_inv.currency) }} is due {{ open_inv.due_date.strftime("%d %b %Y") }}. <a href="{{ url_for('workspace.invoice', invoice_id=open_inv.id) }}">View and pay</a></span></div>{% endif %}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="panel h-100">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("credit-card") }} Current plan</h2>{{ sub_chip(sub, org) }}</div>
+      {% if sub %}
+      <div class="kpi-value mb-1">{{ sub.plan.name }}</div>
+      <div class="text-3 mb-3">{% if sub.plan.price_monthly is not none %}{{ (sub.plan.price_annual if sub.billing_cycle == "annual" else sub.plan.price_monthly)|money(sub.plan.currency) }} per {{ "year" if sub.billing_cycle == "annual" else "month" }}{% else %}Custom pricing{% endif %}</div>
+      <dl class="dl-grid mb-0">
+        {% if sub.trial_days_left is not none %}<div><dt>Trial ends</dt><dd>{{ sub.trial_ends_at|dt("%d %b %Y") }} ({{ sub.trial_days_left }} days)</dd></div>{% endif %}
+        <div><dt>Billing</dt><dd>{{ "Yearly" if sub.billing_cycle == "annual" else "Monthly" }}</dd></div>
+        {% if sub.current_period_end %}<div><dt>{{ "Paid until" if sub.status == "active" else "Ended" }}</dt><dd>{{ sub.current_period_end|dt("%d %b %Y") }}</dd></div>{% endif %}
+        <div><dt>API access</dt><dd>{{ "Included" if sub.plan.api_access else "Professional plan and above" }}</dd></div>
+      </dl>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="panel h-100">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("gauge") }} Usage</h2></div>
+      {% for u in usage %}{{ meter(u) }}{% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="panel mt-4">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("layers") }} Plans</h2><p class="panel-sub">Prices in Ghana cedis. Yearly billing gives you two months free.</p></div>
+    <nav class="segmented" aria-label="Billing period"><a href="#" data-cycle="monthly" aria-current="page">Monthly</a><a href="#" data-cycle="annual">Yearly</a></nav></div>
+  <div class="plan-grid">
+    {% for p in plans %}{% set current = sub and p.id == sub.plan_id %}
+    <div class="plan-card {{ 'current' if current }}">
+      <div class="d-flex align-items-center gap-2"><h3 class="h5 mb-0">{{ p.name }}</h3>{% if current %}<span class="chip purple">Current</span>{% endif %}</div>
+      <div class="small text-3 mb-2">{{ p.audience }}</div>
+      {% if p.price_monthly is not none %}
+      <div class="plan-price"><span data-show-cycle="monthly">{{ p.price_monthly|money(p.currency) }}<small> / month</small></span><span data-show-cycle="annual" hidden>{{ p.price_annual|money(p.currency) }}<small> / year</small></span></div>
+      {% else %}<div class="plan-price">Custom</div>{% endif %}
+      <ul class="plan-features">{% for f in p.features %}<li>{{ icon("check") }} {{ f }}</li>{% endfor %}</ul>
+      {% if p.price_monthly is none %}
+        <a class="btn btn-soft w-100 mt-auto" href="mailto:{{ SALES_EMAIL }}?subject=Enterprise%20plan">{{ icon("mail") }} Talk to sales</a>
+      {% elif can_manage %}
+        {% if blockers[p.id] %}<p class="small text-danger mt-auto mb-0">{{ icon("info") }} Too small for you now: {{ blockers[p.id]|join("; ") }}.</p>
+        {% else %}
+        <form method="post" action="{{ url_for('workspace.billing_checkout') }}" class="mt-auto"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="plan" value="{{ p.id }}"><input type="hidden" name="cycle" value="monthly" data-cycle-input>
+          <button class="btn {{ 'btn-soft' if current else 'btn-primary' }} w-100" type="submit">{{ icon("refresh-cw" if current else "arrow-right") }} {{ ("Renew / pay ahead" if sub.status == "active" else "Pay for this plan") if current else ("Switch to " ~ p.name) }}</button></form>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <p class="small text-3 mt-3 mb-0">{{ icon("shield-check") }} {% if online %}Pay securely by card or mobile money through Paystack. We never see or store card details.{% else %}Online payment is being set up; invoices can be paid by bank transfer meanwhile.{% endif %} Switching plan credits the unused part of your current paid period.</p>
+</div>
+
+<div class="panel mt-4">
+  <div class="panel-head"><h2 class="panel-title">{{ icon("receipt") }} Invoices</h2></div>
+  {% if invoices %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Invoice</th><th>Date</th><th class="num">Amount</th><th>Status</th><th></th></tr></thead>
+    <tbody>{% for i in invoices %}
+      <tr><td><a class="fw-semibold" href="{{ url_for('workspace.invoice', invoice_id=i.id) }}">{{ i.number }}</a><div class="small text-3">{{ i.description }}</div></td>
+        <td class="date">{{ i.created_at|dt("%d %b %Y") }}</td><td class="num fw-semibold">{{ i.amount|money(i.currency) }}</td>
+        <td><span class="chip {{ {'paid': 'green', 'open': 'red' if i.is_overdue else 'amber', 'void': ''}[i.status] }}">{{ "Overdue" if i.is_overdue else i.status_label }}</span></td>
+        <td class="text-end"><a class="icon-btn sm" href="{{ url_for('workspace.invoice_pdf', invoice_id=i.id) }}" aria-label="Download {{ i.number }} as PDF">{{ icon("download") }}</a></td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">{{ icon("receipt") }}<div>No invoices yet.</div></div>{% endif %}
+</div>
+{% endblock %}

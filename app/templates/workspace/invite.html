@@ -1,0 +1,30 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, role_checks %}
+{% block title %}Invite someone{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.team') }}">Team</a>{% endblock %}
+{% block page_title %}Invite someone{% endblock %}
+{% block content %}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-4">
+    <div class="col-xl-7"><div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("mail-plus") }} Who are you inviting?</h2>
+        <p class="panel-sub">{% if mail_on %}We'll email them a link to join and choose their own password.{% else %}Email isn't set up yet, so you'll get a link to send them yourself.{% endif %} Links expire after 7 days.</p></div></div>
+      <div class="row g-3">
+        <div class="col-md-6">{{ field(form.email, autocomplete="off") }}</div>
+        <div class="col-md-6">{{ field(form.full_name, autocomplete="off") }}</div>
+        <div class="col-md-6">{{ field(form.job_title) }}</div>
+        <div class="col-md-6">{{ field(form.department_id) }}</div>
+      </div>
+    </div></div>
+    <div class="col-xl-5"><div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("shield-check") }} Access</h2></div>
+      {{ role_checks(form.roles) }}
+    </div></div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-primary" type="submit">{{ icon("send") }} {{ "Send invitation" if mail_on else "Create invitation link" }}</button>
+    <a class="btn btn-soft" href="{{ url_for('workspace.team') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

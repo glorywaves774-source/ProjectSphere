@@ -1,0 +1,51 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ title if conv else "Messages" }}{% endblock %}
+{% block crumb %}{% if conv %}<a href="{{ url_for('workspace.messages') }}">Messages</a>{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block page_title %}{% if conv %}<span translate="no">{{ title }}</span>{% else %}Messages{% endif %}{% endblock %}
+{% block content %}
+<div class="chat-layout {{ 'has-conv' if conv }}">
+  <aside class="panel chat-inbox" aria-label="Conversations">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("messages-square") }} Conversations</h2>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('workspace.message_new') }}">{{ icon("plus") }} New</a></div>
+    {% if rows %}
+    <ul class="inbox-list">{% for r in rows %}
+      <li><a href="{{ url_for('workspace.conversation', conv_id=r.conv.id) }}" class="{{ 'active' if conv and conv.id == r.conv.id }} {{ 'unread' if r.unread }}" {% if conv and conv.id == r.conv.id %}aria-current="page"{% endif %}>
+        <span class="avatar sm {{ 'group' if r.conv.kind != 'direct' }}" aria-hidden="true">{% if r.conv.kind == "project" %}{{ icon("folder-kanban") }}{% elif r.conv.kind == "group" %}{{ icon("users") }}{% else %}{{ r.name[:1] }}{% endif %}</span>
+        <span class="inbox-body"><span class="inbox-top"><span class="inbox-name" translate="no">{{ r.name }}</span>{% if r.last %}<span class="when">{{ r.last.created_at|dt }}</span>{% endif %}</span>
+          <span class="inbox-last" translate="no">{% if r.last %}{{ "You: " if r.last.author_id == current_user.id }}{{ r.last.body|truncate(70) }}{% else %}No messages yet{% endif %}</span></span>
+        {% if r.unread %}<span class="count-badge static">{{ r.unread }}<span class="visually-hidden"> unread</span></span>{% endif %}</a></li>
+    {% endfor %}</ul>
+    {% else %}<div class="empty">{{ icon("message-circle") }}<div>No conversations yet.</div><a class="btn btn-soft mt-3" href="{{ url_for('workspace.message_new') }}">{{ icon("plus") }} Start one</a></div>{% endif %}
+  </aside>
+
+  <section class="panel chat-pane" aria-label="Conversation">
+    {% if conv %}
+    <div class="chat-head">
+      <a class="icon-btn sm chat-back" href="{{ url_for('workspace.messages') }}" aria-label="All conversations">{{ icon("chevron-left") }}</a>
+      <div class="min-w-0"><div class="fw-semibold" translate="no">{{ title }}</div>
+        <div class="small text-3 text-truncate" translate="no">{% if conv.kind == "project" %}Project discussion · {% endif %}{{ conv.participants|map(attribute="user")|map(attribute="full_name")|join(", ") }}</div></div>
+      {% if conv.project %}<a class="btn btn-soft btn-sm ms-auto" href="{{ url_for('workspace.project', project_id=conv.project_id) }}">{{ icon("folder-kanban") }}<span class="label-wide"> Project</span></a>{% endif %}
+    </div>
+    <ol class="chat-thread">
+      {% for m in conv.messages %}{% set mine = m.author_id == current_user.id %}
+      <li class="bubble-row {{ 'mine' if mine }}" {% if loop.last %}id="latest"{% endif %}>
+        {% if not mine %}<span class="avatar sm" aria-hidden="true" translate="no">{{ m.author.initials if m.author else "?" }}</span>{% endif %}
+        <div class="bubble">{% if not mine and conv.kind != "direct" %}<div class="who" translate="no">{{ m.author.full_name if m.author else "Former user" }}</div>{% endif %}
+          <div class="text" translate="no">{{ m.body }}</div><div class="when">{{ m.created_at|dt }}</div></div>
+      </li>
+      {% else %}<li class="empty">{{ icon("message-circle") }}<div>Say hello. Messages here are only visible to the people in this conversation.</div></li>
+      {% endfor %}
+    </ol>
+    <form method="post" class="chat-compose" novalidate>
+      {{ form.hidden_tag() }}
+      <label class="visually-hidden" for="body">Message</label>
+      {{ form.body(class_="form-control", rows=2, placeholder="Write a message…", maxlength=5000) }}
+      <button class="btn btn-primary" type="submit" aria-label="Send">{{ icon("send") }}<span class="label-wide"> Send</span></button>
+    </form>
+    {% else %}
+    <div class="empty chat-placeholder">{{ icon("messages-square") }}<div>Choose a conversation, or start a new one.</div></div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

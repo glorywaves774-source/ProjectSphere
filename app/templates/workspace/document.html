@@ -1,0 +1,82 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, doc_icon %}
+{% block title %}{{ doc.title }}{% endblock %}
+{% block crumb %}{% if doc.project %}<a href="{{ url_for('workspace.project_documents', project_id=doc.project_id) }}" translate="no">{{ doc.project.name }}</a>{% else %}<a href="{{ url_for('workspace.documents') }}">Documents</a>{% endif %}{% endblock %}
+{% block page_title %}<span translate="no">{{ doc.title }}</span>{% endblock %}
+{% block content %}
+{% set v = doc.current %}
+{% if doc.is_archived %}<div class="announce warning">{{ icon("archive") }}<span>This document is archived. It stays available but is hidden from the library.</span></div>{% endif %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-3 align-items-center">
+        <span class="doc-icon lg ext-{{ v.extension if v else 'none' }}">{{ doc_icon(v.extension if v else "") }}</span>
+        <div class="min-w-0"><div class="fw-semibold text-break" translate="no">{{ v.filename if v else "No file" }}</div>
+          {% if v %}<div class="small text-3">Version {{ v.version_no }} · {{ v.size_bytes|filesize }} · {{ v.created_at|dt }}</div>{% endif %}</div>
+        {% if v %}<a class="btn btn-primary ms-auto" href="{{ url_for('workspace.document_download', doc_id=doc.id, version_id=v.id) }}">{{ icon("download") }} Download</a>{% endif %}
+      </div>
+      {% if doc.description %}<div class="prose mt-3" translate="no">{{ doc.description }}</div>{% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("history") }} Versions</h2><p class="panel-sub">Every upload is kept, so you can go back to an earlier copy.</p></div></div>
+      <div class="table-wrap"><table class="table-ps">
+        <thead><tr><th>Version</th><th>File</th><th>Uploaded</th><th class="num">Size</th><th></th></tr></thead>
+        <tbody>{% for x in doc.versions %}
+          <tr><td class="nowrap fw-semibold">v{{ x.version_no }}{% if loop.first %} <span class="chip green">Current</span>{% endif %}</td>
+            <td><span class="d-block text-break" translate="no">{{ x.filename }}</span>{% if x.note %}<span class="small text-3" translate="no">{{ x.note }}</span>{% endif %}</td>
+            <td class="nowrap"><span translate="no">{{ x.uploaded_by.full_name if x.uploaded_by else "Former user" }}</span><div class="small text-3">{{ x.created_at|dt }}</div></td>
+            <td class="num">{{ x.size_bytes|filesize }}</td>
+            <td class="nowrap text-end"><a class="icon-btn sm" href="{{ url_for('workspace.document_download', doc_id=doc.id, version_id=x.id) }}" aria-label="Download version {{ x.version_no }}">{{ icon("download") }}</a>
+              {% if can_manage and doc.versions|length > 1 %}<form method="post" class="d-inline" data-confirm="Tap again to delete"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_version"><input type="hidden" name="version" value="{{ x.id }}"><button class="icon-btn sm" type="submit" aria-label="Delete version {{ x.version_no }}">{{ icon("trash-2") }}</button></form>{% endif %}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% if can_upload and not doc.is_archived %}
+      <form method="post" enctype="multipart/form-data" class="mt-3" novalidate>
+        {{ vform.hidden_tag() }}<input type="hidden" name="action" value="version">
+        <div class="row g-3">
+          <div class="col-md-6">{{ field(vform.file) }}</div>
+          <div class="col-md-6">{{ field(vform.note, placeholder="e.g. Updated after donor feedback") }}</div>
+        </div>
+        <button class="btn btn-soft" type="submit">{{ icon("upload") }} Upload new version</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("messages-square") }} Comments</h2></div>
+      {% if doc.comments %}
+      <ol class="timeline">{% for c in doc.comments %}
+        <li><span class="avatar sm" translate="no">{{ c.author.initials if c.author else "?" }}</span>
+          <div class="timeline-body"><div class="thread-meta"><span class="who" translate="no">{{ c.author.full_name if c.author else "Former user" }}</span><span class="when nowrap">{{ c.created_at|dt }}</span></div>
+            <div class="thread-body" translate="no">{{ c.body }}</div></div></li>
+      {% endfor %}</ol>
+      {% else %}<p class="text-3">No comments yet.</p>{% endif %}
+      <form method="post" class="mt-3" novalidate>
+        {{ cform.hidden_tag() }}<input type="hidden" name="action" value="comment">
+        {{ field(cform.body, placeholder="Feedback, questions or review notes…") }}
+        <button class="btn btn-soft" type="submit">{{ icon("send") }} Comment</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Details</h2></div>
+      <dl class="dl-grid one-col">
+        <div><dt>Category</dt><dd>{{ doc.category_label }}</dd></div>
+        <div><dt>Where</dt><dd>{% if doc.project %}<a href="{{ url_for('workspace.project', project_id=doc.project_id) }}" translate="no">{{ doc.project.name }}</a>{% else %}Organization library{% endif %}</dd></div>
+        <div><dt>Added by</dt><dd translate="no">{{ doc.created_by.full_name if doc.created_by else "Former user" }}</dd></div>
+        <div><dt>Created</dt><dd>{{ doc.created_at|dt }}</dd></div>
+        {% if v %}<div><dt>Fingerprint</dt><dd><span class="code small text-break">{{ v.sha256[:16] }}…</span><div class="form-hint">Checked on every download, so you know the file hasn't changed.</div></dd></div>{% endif %}
+      </dl>
+      {% if can_manage %}
+      <div class="d-flex gap-2 flex-wrap mt-2">
+        <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="{{ 'restore' if doc.is_archived else 'archive' }}"><button class="btn btn-soft btn-sm" type="submit">{{ icon("archive-restore" if doc.is_archived else "archive") }} {{ "Restore" if doc.is_archived else "Archive" }}</button></form>
+        <form method="post" data-confirm="Tap again to delete every version"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><button class="btn btn-danger-soft btn-sm" type="submit">{{ icon("trash-2") }} Delete</button></form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

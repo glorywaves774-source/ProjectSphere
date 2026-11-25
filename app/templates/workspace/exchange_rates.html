@@ -1,0 +1,28 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}Exchange rates{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.finance') }}">Finance</a>{% endblock %}
+{% block page_title %}Exchange rates{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-7"><div class="panel">
+    <div class="panel-head"><div><h2 class="panel-title">{{ icon("coins") }} Rates to {{ base }}</h2><p class="panel-sub">Used to convert expenses in other currencies and to total projects across currencies. {{ base }} is your base currency.</p></div></div>
+    {% if rows %}<div class="table-wrap"><table class="table-ps">
+      <thead><tr><th>Currency</th><th class="num">1 unit =</th><th>Effective from</th></tr></thead>
+      <tbody>{% for r in rows %}<tr><td class="fw-semibold">{{ r.currency }}</td><td class="num">{{ r.rate_to_base|round(4) }} {{ base }}</td><td class="date">{{ r.effective_on.strftime("%d %b %Y") }}</td></tr>{% endfor %}</tbody>
+    </table></div>{% else %}<div class="empty">No rates set yet.</div>{% endif %}
+  </div></div>
+  {% if can_edit %}
+  <div class="col-xl-5"><div class="panel">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("pencil") }} Set a rate</h2></div>
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+      {{ field(form.currency) }}
+      {{ field(form.rate, hint="How many " ~ base ~ " one unit of the currency is worth, e.g. 15.2 for USD.") }}
+      {{ field(form.effective_on) }}
+      <button class="btn btn-primary" type="submit">{{ icon("save") }} Save rate</button>
+    </form>
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}

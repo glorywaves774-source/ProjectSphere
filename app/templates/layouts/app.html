@@ -1,0 +1,116 @@
+{% extends "layouts/base.html" %}
+{% from "partials/macros.html" import icon, theme_button, flashes, brand %}
+{% block body_class %}app{% endblock %}
+{% block body %}
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar" aria-label="Main menu">
+    <div class="sidebar-head">
+      {{ brand(url_for("admin.dashboard") if nav.is_admin else url_for("workspace.dashboard")) }}
+      <button type="button" class="icon-btn sidebar-close" data-drawer-close aria-label="Close menu">{{ icon("x") }}</button>
+    </div>
+    <div class="nav-filter">
+      {{ icon("search") }}
+      <input type="search" placeholder="Find a page" aria-label="Find a page">
+    </div>
+    <nav class="nav-scroll">
+      {% for title, items in nav.sections %}
+      <div class="nav-section">
+        <div class="nav-section-title">{{ title }}</div>
+        {% for item in items %}
+          {% if item.soon %}
+          <span class="nav-link-ps soon" aria-disabled="true">{{ icon(item.icon) }}<span>{{ item.label }}</span><span class="soon-badge">{{ item.soon }}</span></span>
+          {% else %}
+          {% set active = request.endpoint == item.endpoint %}
+          <a class="nav-link-ps {{ 'active' if active }}" href="{{ url_for(item.endpoint) }}" {% if active %}aria-current="page"{% endif %}>{{ icon(item.icon) }}<span>{{ item.label }}</span></a>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </nav>
+    <div class="sidebar-user">
+      <span class="avatar sm" translate="no">{{ current_user.initials }}</span>
+      <div class="who">
+        <div class="name" translate="no">{{ current_user.full_name }}</div>
+        <div class="org" translate="no">{{ current_user.organization.name if current_user.organization else "Kayron Global Tech Services" }}</div>
+      </div>
+    </div>
+  </aside>
+  <div class="drawer-overlay" data-drawer-close aria-hidden="true"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button type="button" class="icon-btn back-btn" data-back aria-label="Back">{{ icon("chevron-left") }}</button>
+      <button type="button" class="icon-btn menu-btn" data-drawer-open aria-controls="sidebar" aria-expanded="false" aria-label="Open menu">{{ icon("menu") }}</button>
+      <div class="topbar-title">
+        <div class="crumb">{% block crumb %}{{ "Platform console" if nav.is_admin else (current_user.organization.name if current_user.organization) }}{% endblock %}</div>
+        <h1>{% block page_title %}{% endblock %}</h1>
+      </div>
+      <div class="topbar-tools">
+        {% block topbar_actions %}{% endblock %}
+        {% if not nav.is_admin %}
+        <a class="icon-btn badge-btn hide-xs" href="{{ url_for('workspace.messages') }}" aria-label="Messages{% if UNREAD.msgs %}, {{ UNREAD.msgs }} unread{% endif %}">{{ icon("messages-square") }}{% if UNREAD.msgs %}<span class="count-badge">{{ UNREAD.msgs if UNREAD.msgs < 100 else "99+" }}</span>{% endif %}</a>
+        <a class="icon-btn badge-btn" href="{{ url_for('workspace.notifications') }}" aria-label="Notifications{% if UNREAD.notes %}, {{ UNREAD.notes }} unread{% endif %}">{{ icon("bell") }}{% if UNREAD.notes %}<span class="count-badge">{{ UNREAD.notes if UNREAD.notes < 100 else "99+" }}</span>{% endif %}</a>
+        {% endif %}
+        {{ theme_button() }}
+        <div class="dropdown user-menu">
+          <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
+            <span class="avatar sm" translate="no">{{ current_user.initials }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li class="dropdown-header"><div class="fw-semibold text-body" translate="no">{{ current_user.full_name }}</div><div class="small" translate="no">{{ current_user.email }}</div><div class="small">{{ current_user.role_names|join(", ") }}</div></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ url_for('admin.account' if nav.is_admin else 'workspace.account') }}">{{ icon("user-round") }} My account</a></li>
+            {% if not nav.is_admin %}<li><a class="dropdown-item" href="{{ url_for('workspace.support') }}">{{ icon("life-buoy") }} Help & support</a></li>{% endif %}
+            <li>
+              <form method="post" action="{{ url_for('auth.logout') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="dropdown-item" type="submit">{{ icon("log-out") }} Sign out</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <main class="content" id="main">
+      {% if PS.announcement and not nav.is_admin %}
+      <div class="announce {{ PS.announcement_level }}" role="status">{{ icon({"warning": "alert-triangle", "success": "party-popper"}.get(PS.announcement_level, "megaphone")) }}<span>{{ PS.announcement }}</span></div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    <div class="footer-note">{{ APP_NAME }} · {{ COMPANY_NAME }}</div>
+  </div>
+</div>
+
+<nav class="bottom-tabs" aria-label="Main destinations">
+  {% for item in nav.tabs %}
+  <a href="{{ url_for(item.endpoint) }}" {% if request.endpoint == item.endpoint %}aria-current="page"{% endif %}>{{ icon(item.icon) }}<span>{{ item.tab_label }}</span></a>
+  {% endfor %}
+  <button type="button" data-drawer-open aria-controls="sidebar" aria-expanded="false">{{ icon("menu") }}<span>Menu</span></button>
+</nav>
+
+{{ flashes() }}
+
+<button type="button" class="help-fab" id="help-fab" aria-controls="help-panel" aria-expanded="false" aria-label="Open ProjectSphere Assistant">{{ icon("message-circle-question") }}</button>
+<section class="help-panel" id="help-panel" aria-label="ProjectSphere Assistant">
+  <div class="help-head">
+    <span class="avatar sm">{{ icon("sparkles") }}</span>
+    <span class="title">ProjectSphere Assistant</span>
+    <button type="button" class="icon-btn" data-help-close aria-label="Close assistant">{{ icon("x") }}</button>
+  </div>
+  <div class="help-body">
+    <div class="msg bot">Hi {{ current_user.full_name.split()[0] }} — ask me how to do something in ProjectSphere.</div>
+  </div>
+  <div class="help-suggest"></div>
+  <div class="help-privacy">Answers come from the help guide. Your records are never shared.</div>
+  <form class="help-form" autocomplete="off">
+    <input class="form-control" type="text" maxlength="300" placeholder="Ask a question" aria-label="Your question">
+    <button class="btn btn-primary" type="submit" aria-label="Send">{{ icon("send") }}</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/help.js') }}"></script>
+{% endblock %}

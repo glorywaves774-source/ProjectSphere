@@ -1,0 +1,27 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ ("Edit " ~ issue.code) if issue else "Log an issue" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_risks', project_id=project.id) }}">{{ project.code }} risks &amp; issues</a>{% endblock %}
+{% block page_title %}{{ ("Edit " ~ issue.code) if issue else "Log an issue" }}{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  {% if projects|length > 1 and not issue %}
+  <form method="get" class="mb-3"><label class="form-label" for="project">Project</label>
+    <select class="form-select" id="project" name="project" data-autosubmit>{% for p in projects %}<option value="{{ p.id }}" {{ "selected" if p.id == project.id }}>{{ p.code }} · {{ p.name }}</option>{% endfor %}</select></form>
+  {% endif %}
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}<input type="hidden" name="project" value="{{ project.id }}">
+    {{ field(form.title, placeholder="e.g. Pump at Kpachi borehole has stopped working") }}
+    {{ field(form.description) }}
+    <div class="row g-3">
+      <div class="col-sm-4">{{ field(form.priority) }}</div>
+      <div class="col-sm-4">{{ field(form.assignee_id) }}</div>
+      <div class="col-sm-4">{{ field(form.due_date) }}</div>
+    </div>
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("save") }} Save issue</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.issue', issue_id=issue.id) if issue else url_for('workspace.project_risks', project_id=project.id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

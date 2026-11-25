@@ -1,0 +1,54 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}{{ dept.name if dept else "New department" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.departments') }}">Departments</a>{% endblock %}
+{% block page_title %}{% if dept %}<span translate="no">{{ dept.name }}</span>{% else %}New department{% endif %}{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-7">
+    <div class="panel">
+      {% if not dept or can_edit %}
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="row g-3">
+          <div class="col-md-8">{{ field(form.name) }}</div>
+          <div class="col-md-4">{{ field(form.code, hint=form.code.description) }}</div>
+          <div class="col-12">{{ field(form.head_id) }}</div>
+          <div class="col-12">{{ field(form.description) }}</div>
+        </div>
+        <div class="form-actions mt-0">
+          <button class="btn btn-primary" type="submit">{{ icon("save") }} {{ "Save" if dept else "Create department" }}</button>
+          <a class="btn btn-soft" href="{{ url_for('workspace.departments') }}">Cancel</a>
+        </div>
+      </form>
+      {% else %}
+      <dl class="dl-grid" translate="no">
+        <div><dt>Code</dt><dd>{{ dept.code or "—" }}</dd></div>
+        <div><dt>Head</dt><dd>{{ dept.head.full_name if dept.head else "—" }}</dd></div>
+        <div><dt>Description</dt><dd>{{ dept.description or "—" }}</dd></div>
+      </dl>
+      {% endif %}
+    </div>
+    {% if dept and can_edit %}
+    <div class="panel">
+      <form method="post" data-confirm="Tap again to delete">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete">
+        <p class="small text-3">Deleting a department keeps its people; they just won't have a department.</p>
+        <button class="btn btn-danger-soft" type="submit">{{ icon("trash-2") }} Delete department</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% if dept %}
+  <div class="col-xl-5"><div class="panel">
+    <div class="panel-head"><h2 class="panel-title">{{ icon("users") }} People ({{ members|length }})</h2></div>
+    {% if members %}<ul class="activity-list">{% for u in members %}
+      <li><span class="avatar sm" translate="no">{{ u.initials }}</span><div class="activity-body">
+        <a class="what d-block" href="{{ url_for('workspace.member', user_id=u.id) }}" translate="no">{{ u.full_name }}</a>
+        <div class="meta" translate="no">{{ u.job_title or u.role_names|join(", ") }}{% if not u.is_active_user %} · deactivated{% endif %}</div></div></li>
+    {% endfor %}</ul>
+    {% else %}<div class="empty">No one in this department yet. Set departments from each person's page in Team.</div>{% endif %}
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}

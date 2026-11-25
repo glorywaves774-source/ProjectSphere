@@ -1,0 +1,42 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, check %}
+{% block title %}Announcements{% endblock %}
+{% block page_title %}Announcements{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="{{ 'col-xl-8' if can_post else 'col-12' }}">
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("megaphone") }} Organization news</h2><p class="panel-sub">Updates for everyone in {{ current_user.organization.name }}</p></div></div>
+      {% if items %}
+      <ul class="announce-list">{% for a in items %}
+        <li class="{{ 'pinned' if a.pinned }}">
+          <div class="d-flex gap-2 align-items-start flex-wrap">
+            <h3 class="h6 fw-semibold mb-1 me-auto" translate="no">{% if a.pinned %}<span class="text-purple">{{ icon("pin") }}</span> {% endif %}{{ a.title }}</h3>
+            {% if can_post %}
+            <form method="post" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ a.id }}"><input type="hidden" name="action" value="{{ 'unpin' if a.pinned else 'pin' }}"><button class="icon-btn sm" type="submit" aria-label="{{ 'Unpin' if a.pinned else 'Pin' }}">{{ icon("pin-off" if a.pinned else "pin") }}</button></form>
+            <form method="post" class="d-inline" data-confirm="Tap again to delete"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="id" value="{{ a.id }}"><input type="hidden" name="action" value="delete"><button class="icon-btn sm" type="submit" aria-label="Delete announcement">{{ icon("trash-2") }}</button></form>
+            {% endif %}
+          </div>
+          <div class="prose" translate="no">{{ a.body }}</div>
+          <div class="small text-3 mt-1"><span translate="no">{{ a.author.full_name if a.author else "Former user" }}</span> · {{ a.created_at|dt }}</div>
+        </li>
+      {% endfor %}</ul>
+      {% else %}<div class="empty">{{ icon("megaphone") }}<div>No announcements yet.</div></div>{% endif %}
+    </div>
+  </div>
+  {% if can_post %}
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("pen-line") }} Post an announcement</h2></div>
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}<input type="hidden" name="action" value="post">
+        {{ field(form.title) }}
+        {{ field(form.body) }}
+        {{ check(form.pinned) }}
+        <button class="btn btn-primary w-100" type="submit">{{ icon("send") }} Post to everyone</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Meetings{% endblock %}
+{% block page_title %}Meetings{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("video") }} {{ "Past meetings" if past else "Upcoming meetings" }}</h2><p class="panel-sub">Meetings you organise or are invited to · times in {{ tz.key }}</p></div>
+    <a class="btn btn-primary" href="{{ url_for('workspace.meeting_new') }}">{{ icon("plus") }} Schedule</a></div>
+  <nav class="segmented mb-3" aria-label="When">
+    <a href="{{ url_for('workspace.meetings') }}" {% if not past %}aria-current="page"{% endif %}>Upcoming</a>
+    <a href="{{ url_for('workspace.meetings', when='past') }}" {% if past %}aria-current="page"{% endif %}>Past</a>
+  </nav>
+  {% if items %}
+  <ul class="meeting-list">{% for m in items %}{% set local = m.starts_at.astimezone(tz) %}
+    <li class="{{ 'cancelled' if m.cancelled }}">
+      <div class="date-tile" aria-hidden="true"><span class="mon">{{ local.strftime("%b") }}</span><span class="day">{{ local.day }}</span></div>
+      <div class="min-w-0"><a class="fw-semibold d-block" href="{{ url_for('workspace.meeting', meeting_id=m.id) }}" translate="no">{{ m.title }}</a>
+        <div class="small text-3"><span class="nowrap">{{ local.strftime("%a %d %b, %H:%M") }}</span> · {{ m.duration_min }} min{% if m.location %} · <span translate="no">{{ m.location|truncate(40) }}</span>{% endif %}{% if m.project %} · <span translate="no">{{ m.project.code }}</span>{% endif %}</div>
+        <div class="d-flex gap-1 flex-wrap mt-1">{% if m.cancelled %}<span class="chip red">Cancelled</span>{% endif %}{% if m.minutes %}<span class="chip green">{{ icon("notebook-pen") }} Minutes</span>{% endif %}<span class="chip">{{ icon("users") }} {{ m.attendees|length }}</span></div></div>
+    </li>
+  {% endfor %}</ul>
+  {% else %}<div class="empty">{{ icon("calendar-x") }}<div>{{ "No past meetings." if past else "Nothing scheduled." }}</div></div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, people_checks %}
+{% block title %}New conversation{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.messages') }}">Messages</a>{% endblock %}
+{% block page_title %}New conversation{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ people_checks(form.people, hint="Pick one person for a private chat, or two or more for a group.") }}
+    {{ field(form.title, hint=form.title.description) }}
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("message-circle") }} Start</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.messages') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

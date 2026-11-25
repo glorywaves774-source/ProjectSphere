@@ -1,0 +1,172 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, check, pr_status, vendor_status, num %}
+{% block title %}{{ pr.reference }} · {{ pr.title }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.procurement') }}">Procurement</a> · {{ pr.reference }}{% endblock %}
+{% block page_title %}<span translate="no">{{ pr.title }}</span>{% endblock %}
+{% block content %}
+{% set cur = pr.project.currency %}
+{% if pr.status == "rejected" %}<div class="announce warning">{{ icon("x-circle") }}<span>Rejected by <span translate="no">{{ pr.decided_by.full_name if pr.decided_by else "an approver" }}</span>: <span translate="no">{{ pr.decision_note }}</span>. Edit and send it again.</span></div>{% endif %}
+{% if pr.status == "cancelled" %}<div class="announce warning">{{ icon("ban") }}<span>Cancelled: <span translate="no">{{ pr.cancel_note }}</span></span></div>{% endif %}
+{% if can_decide %}<div class="announce warning">{{ icon("hourglass") }}<span>This request is waiting for your approval.</span></div>{% endif %}
+
+<ol class="steps" aria-label="Progress">
+  {% set order = ["draft", "submitted", "approved", "ordered", "received"] %}
+  {% set at = order.index(pr.status) if pr.status in order else (1 if pr.status == "rejected" else -1) %}
+  {% for key, label in [("draft", "Drafted"), ("submitted", "Approval"), ("approved", "Quotations"), ("ordered", "Ordered"), ("received", "Received")] %}
+  <li class="{{ 'done' if loop.index0 < at or pr.status == 'received' else ('current' if loop.index0 == at else '') }}" {% if loop.index0 == at %}aria-current="step"{% endif %}><span>{{ loop.index }}</span>{{ label }}</li>
+  {% endfor %}
+</ol>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        {{ pr_status(pr) }}<span class="chip">{{ pr.method_label }} · {{ pr.min_quotes }} quote{{ "s" if pr.min_quotes != 1 }}</span>{% if pr.over_budget %}<span class="chip red">Over budget</span>{% endif %}
+        <div class="ms-auto d-flex gap-2 flex-wrap">
+          {% if pr.po_number %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.procurement_po', pr_id=pr.id) }}">{{ icon("file-text") }} {{ pr.po_number }} PDF</a>{% endif %}
+          {% if can_edit %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.procurement_edit', pr_id=pr.id) }}">{{ icon("pencil") }} Edit</a>
+            <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="submit"><button class="btn btn-primary btn-sm" type="submit">{{ icon("send") }} Send for approval</button></form>{% endif %}
+          {% if pr.status == "draft" and pr.requested_by_id == current_user.id %}<form method="post" data-confirm="Tap again to delete"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><button class="btn btn-danger-soft btn-sm" type="submit" aria-label="Delete draft">{{ icon("trash-2") }}</button></form>{% endif %}
+        </div>
+      </div>
+      {% if pr.justification %}<h3 class="dep-head mt-3">Why it's needed</h3><div class="prose" translate="no">{{ pr.justification }}</div>{% endif %}
+      <h3 class="dep-head mt-3">Items</h3>
+      <div class="table-wrap"><table class="table-ps">
+        <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Est. unit cost</th><th class="num">Est. total</th></tr></thead>
+        <tbody>{% for i in pr.items %}
+          <tr><td><span translate="no">{{ i.description }}</span>{% if i.specification %}<div class="small text-3" translate="no">{{ i.specification }}</div>{% endif %}</td>
+            <td class="num nowrap">{{ num(i.quantity) }} {{ i.unit }}</td><td class="num">{{ i.unit_cost|money(cur) }}</td><td class="num fw-semibold">{{ i.total|money(cur) }}</td></tr>
+        {% endfor %}</tbody>
+        <tfoot><tr><td colspan="3" class="fw-semibold">Estimated total</td><td class="num fw-semibold">{{ pr.estimated_total|money(cur) }}</td></tr></tfoot>
+      </table></div>
+    </div>
+
+    {% if can_decide %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("badge-check") }} Approval</h2></div>
+      <form method="post" novalidate>
+        {{ dform.hidden_tag() }}
+        {{ field(dform.note, placeholder="Optional for approval; required to reject or to approve over budget") }}
+        {% if pos and pos.short > 0 %}{{ check(dform.allow_over) }}{% endif %}
+        <div class="form-actions mt-0">
+          <button class="btn btn-primary" type="submit" name="action" value="approve">{{ icon("thumbs-up") }} Approve</button>
+          <button class="btn btn-soft" type="submit" name="action" value="reject">{{ icon("thumbs-down") }} Reject</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if pr.status in ("approved", "ordered", "received") or pr.quotations %}
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("file-search") }} Quotations</h2>
+        <p class="panel-sub">{{ valid|length }} valid from approved vendors · {{ pr.method_label }} needs {{ pr.min_quotes }}</p></div></div>
+      {% if pr.quotations %}
+      <div class="table-wrap"><table class="table-ps">
+        <thead><tr><th>Vendor</th><th class="num">Quoted</th><th class="num">In {{ cur }}</th><th>Delivery</th><th>Valid until</th><th></th></tr></thead>
+        <tbody>{% set low = (valid|map(attribute="amount_project")|min) if valid else none %}
+        {% for q in pr.quotations %}
+          <tr class="{{ 'awarded' if q.id == pr.awarded_quotation_id }}"><td><a class="fw-semibold" href="{{ url_for('workspace.vendor', vendor_id=q.vendor_id) }}" translate="no">{{ q.vendor.name }}</a>
+              <div class="d-flex gap-1 flex-wrap mt-1">{% if q.id == pr.awarded_quotation_id %}<span class="chip green">{{ icon("award") }} Awarded</span>{% endif %}{% if low is not none and q.amount_project == low and q in valid %}<span class="chip blue">Lowest</span>{% endif %}{% if q.vendor.status != "approved" %}{{ vendor_status(q.vendor) }}{% endif %}</div>
+              {% if q.reference or q.document %}<div class="small text-3">{{ q.reference }}{% if q.document %} · <a href="{{ url_for('workspace.document', doc_id=q.document_id) }}">{{ icon("paperclip") }} document</a>{% endif %}</div>{% endif %}</td>
+            <td class="num nowrap">{{ q.amount|money(q.currency) }}</td><td class="num nowrap fw-semibold">{{ q.amount_project|money(cur) }}</td>
+            <td class="nowrap">{{ (q.delivery_days ~ " days") if q.delivery_days is not none else "—" }}</td>
+            <td class="date {{ 'text-danger' if q.valid_until and q.valid_until < now_utc().date() }}">{{ q.valid_until.strftime("%d %b %Y") if q.valid_until else "—" }}</td>
+            <td class="text-end">{% if is_officer and pr.status == "approved" %}<form method="post" data-confirm="Tap again to remove"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="remove_quote"><input type="hidden" name="quote" value="{{ q.id }}"><button class="icon-btn sm" type="submit" aria-label="Remove quotation from {{ q.vendor.name }}">{{ icon("trash-2") }}</button></form>{% endif %}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% else %}<p class="text-3">No quotations recorded yet.</p>{% endif %}
+      {% if pr.award_justification %}<h3 class="dep-head mt-3">Award justification</h3><div class="prose" translate="no">{{ pr.award_justification }}</div>{% endif %}
+
+      {% if is_officer and pr.status == "approved" %}
+      {% if qform.vendor_id.choices %}
+      <details class="mt-3" {% if not pr.quotations %}open{% endif %}><summary class="fw-semibold">{{ icon("plus") }} Record a quotation</summary>
+        <form method="post" class="mt-3" novalidate>
+          {{ qform.hidden_tag() }}<input type="hidden" name="action" value="quote">
+          <div class="row g-3">
+            <div class="col-md-6">{{ field(qform.vendor_id) }}</div>
+            <div class="col-6 col-md-3">{{ field(qform.amount) }}</div>
+            <div class="col-6 col-md-3">{{ field(qform.currency) }}</div>
+            <div class="col-6 col-md-3">{{ field(qform.delivery_days) }}</div>
+            <div class="col-6 col-md-3">{{ field(qform.valid_until) }}</div>
+            <div class="col-md-6">{{ field(qform.exchange_rate, hint=qform.exchange_rate.description) }}</div>
+            <div class="col-md-6">{{ field(qform.reference) }}</div>
+            <div class="col-md-6">{{ field(qform.document_id, hint="Upload the quotation to the project's documents first.") }}</div>
+          </div>
+          {{ field(qform.notes) }}
+          <button class="btn btn-soft" type="submit">{{ icon("save") }} Save quotation</button>
+        </form></details>
+      {% else %}<p class="small text-3 mt-3">Every vendor has quoted. <a href="{{ url_for('workspace.vendor_new') }}">Register another vendor</a>.</p>{% endif %}
+      {% if pr.quotations %}
+      <form method="post" class="award-box mt-3" novalidate>
+        {{ aform.hidden_tag() }}<input type="hidden" name="action" value="award">
+        <h3 class="dep-head">Award and issue the purchase order</h3>
+        {{ field(aform.quotation_id) }}
+        {{ field(aform.justification, hint=aform.justification.description) }}
+        <button class="btn btn-primary" type="submit">{{ icon("award") }} Award and issue PO</button>
+      </form>
+      {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if can_receive %}
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("package-check") }} Confirm receipt</h2><p class="panel-sub">Check quantities and quality first. {% if pr.budget_line %}The amount is then recorded as an approved expense on {{ pr.budget_line.code }} for finance to pay.{% endif %}</p></div></div>
+      <form method="post" novalidate>
+        {{ rform.hidden_tag() }}<input type="hidden" name="action" value="receive">
+        <div class="row g-3">
+          <div class="col-6 col-md-4">{{ field(rform.received_on) }}</div>
+          <div class="col-6 col-md-4">{{ field(rform.rating) }}</div>
+          <div class="col-md-4">{{ field(rform.invoice_ref) }}</div>
+        </div>
+        {{ field(rform.note) }}
+        <button class="btn btn-primary" type="submit">{{ icon("package-check") }} Record receipt</button>
+      </form>
+    </div>
+    {% endif %}
+    {% if pr.status == "received" %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("package-check") }} Received</h2></div>
+      <p class="mb-1">{{ pr.received_on.strftime("%d %b %Y") }} · vendor rated <b>{{ pr.vendor_rating }}/5</b>{% if pr.received_by %} by <span translate="no">{{ pr.received_by.full_name }}</span>{% endif %}</p>
+      {% if pr.receipt_note %}<div class="prose small" translate="no">{{ pr.receipt_note }}</div>{% endif %}
+      {% if pr.expense %}<p class="mt-2 mb-0">{{ icon("receipt") }} Expense <a href="{{ url_for('workspace.expense', expense_id=pr.expense_id) }}">{{ pr.expense.reference }}</a> · {{ pr.expense.status_label }}</p>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Details</h2></div>
+      <dl class="dl-grid one-col">
+        <div><dt>Reference</dt><dd class="code">{{ pr.reference }}{% if pr.po_number %} · {{ pr.po_number }}{% endif %}</dd></div>
+        <div><dt>Project</dt><dd><a href="{{ url_for('workspace.project', project_id=pr.project_id) }}" translate="no">{{ pr.project.name }}</a></dd></div>
+        <div><dt>Requested by</dt><dd><span translate="no">{{ pr.requested_by.full_name if pr.requested_by else "Former user" }}</span>{% if pr.submitted_at %}, {{ pr.submitted_at|dt }}{% endif %}</dd></div>
+        <div><dt>Needed by</dt><dd>{{ pr.needed_by.strftime("%d %b %Y") if pr.needed_by else "Not set" }}</dd></div>
+        {% if pr.delivery_location %}<div><dt>Deliver to</dt><dd translate="no">{{ pr.delivery_location }}</dd></div>{% endif %}
+        {% if pr.decided_by %}<div><dt>{{ "Approved" if pr.status != "rejected" else "Rejected" }} by</dt><dd><span translate="no">{{ pr.decided_by.full_name }}</span>, {{ pr.decided_at|dt }}{% if pr.decision_note and pr.status != "rejected" %}<div class="small text-3" translate="no">{{ pr.decision_note }}</div>{% endif %}</dd></div>{% endif %}
+        {% if pr.ordered_by %}<div><dt>Ordered by</dt><dd><span translate="no">{{ pr.ordered_by.full_name }}</span>, {{ pr.ordered_at|dt }}</dd></div>{% endif %}
+      </dl>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("wallet") }} Budget</h2></div>
+      {% if pos %}
+      <dl class="dl-grid one-col">
+        <div><dt>Budget line</dt><dd><a href="{{ url_for('workspace.project_budget', project_id=pr.project_id) }}">{{ pos.line.code }}</a> · <span translate="no">{{ pos.line.description }}</span></dd></div>
+        <div><dt>Line budget</dt><dd>{{ pos.budget|money(cur) }}</dd></div>
+        <div><dt>Spent or requested</dt><dd>{{ pos.spent|money(cur) }}</dd></div>
+        <div><dt>Other open purchases</dt><dd>{{ pos.committed|money(cur) }}</dd></div>
+        <div><dt>Left for this request</dt><dd class="{{ 'text-danger fw-semibold' if pos.short > 0 }}">{{ pos.remaining|money(cur) }}{% if pos.short > 0 %}<div class="small">{{ pos.short|money(cur) }} short</div>{% endif %}</dd></div>
+      </dl>
+      {% else %}<p class="text-3 mb-0">No budget line linked yet. It's needed before approval.</p>{% endif %}
+    </div>
+    {% if can_cancel %}
+    <div class="panel">
+      <form method="post" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="cancel">
+        <label class="form-label" for="cancel-note">Cancel this request</label>
+        <textarea class="form-control mb-2" id="cancel-note" name="note" rows="2" maxlength="2000" placeholder="Reason"></textarea>
+        <button class="btn btn-danger-soft w-100" type="submit">{{ icon("ban") }} Cancel request</button></form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

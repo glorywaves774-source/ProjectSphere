@@ -1,0 +1,29 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field %}
+{% block title %}Super Admins{% endblock %}
+{% block page_title %}Super Admins{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-xl-8"><div class="panel">
+    <div class="panel-head"><div><h2 class="panel-title">{{ icon("shield-check") }} Kayron Global Tech Services team</h2><p class="panel-sub">People who can manage the whole platform.</p></div></div>
+    <div class="table-wrap"><table class="table-ps">
+      <thead><tr><th>Name</th><th>Status</th><th>Last sign-in</th><th>Actions</th></tr></thead>
+      <tbody>{% for u in people %}
+        <tr><td><div class="cell-user"><span class="avatar sm" translate="no">{{ u.initials }}</span><div><div class="name" translate="no">{{ u.full_name }}{% if u.id == current_user.id %} <span class="chip">You</span>{% endif %}</div><div class="sub" translate="no">{{ u.email }}</div></div></div></td>
+          <td>{% if not u.is_active_user %}<span class="chip">Deactivated</span>{% elif u.must_change_password %}<span class="chip amber">Awaiting first sign-in</span>{% else %}<span class="chip green"><span class="dot"></span>Active</span>{% endif %}</td>
+          <td class="date">{{ u.last_login_at|dt }}</td>
+          <td>{% if u.id != current_user.id %}{% include "admin/_user_actions.html" %}{% endif %}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+  </div></div>
+  <div class="col-xl-4"><div class="panel">
+    <div class="panel-head"><div><h2 class="panel-title">{{ icon("user-round-plus") }} Add a Super Admin</h2><p class="panel-sub">They get a one-time password and must change it at first sign-in.</p></div></div>
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+      {{ field(form.full_name) }}
+      {{ field(form.email, autocomplete="off") }}
+      <button class="btn btn-primary" type="submit">{{ icon("plus") }} Add Super Admin</button>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

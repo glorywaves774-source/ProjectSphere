@@ -1,0 +1,35 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager %}
+{% block title %}Billing{% endblock %}
+{% block page_title %}Billing{% endblock %}
+{% block content %}
+{% if not online %}<div class="announce warning">{{ icon("plug") }}<span>Online payment is off: set <span class="code">PAYSTACK_SECRET_KEY</span> on the server to switch on Paystack. Until then, record bank and mobile-money payments here.</span></div>{% endif %}
+{% if mail.queued or mail.failed %}<div class="announce">{{ icon("mail") }}<span>Email outbox: {{ mail.queued }} waiting to send, {{ mail.failed }} failed.{% if mail.failed %} Check the MAIL_* settings.{% endif %}</span></div>{% endif %}
+{% macro amounts(d) %}{% for cur, amt in d.items() %}<div>{{ amt|money(cur) }}</div>{% else %}<div>—</div>{% endfor %}{% endmacro %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon green">{{ icon("banknote") }}</span>Collected this month</div><div class="kpi-value kpi-money">{{ amounts(rev.month) }}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("calendar") }}</span>Collected this year</div><div class="kpi-value kpi-money">{{ amounts(rev.year) }}</div></div></div>
+  <div class="col-6 col-lg-3"><a class="kpi kpi-link" href="{{ url_for('admin.billing_home', status='open') }}"><div class="kpi-label"><span class="kpi-icon amber">{{ icon("hourglass") }}</span>Outstanding</div><div class="kpi-value kpi-money">{{ amounts(rev.outstanding) }}</div></a></div>
+  <div class="col-6 col-lg-3"><a class="kpi kpi-link" href="{{ url_for('admin.billing_home', status='overdue') }}"><div class="kpi-label"><span class="kpi-icon red">{{ icon("alarm-clock") }}</span>Overdue invoices</div><div class="kpi-value">{{ rev.overdue }}</div></a></div>
+</div>
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("receipt") }} Invoices</h2><p class="panel-sub">{{ page.total }} invoice{{ "s" if page.total != 1 }}. To issue one, open the organization.</p></div></div>
+  <form class="search-row mb-3" method="get" role="search">
+    <div class="search-box">{{ icon("search") }}<input class="form-control" type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Invoice number or organization" aria-label="Search invoices"></div>
+    <select class="form-select" name="status" data-autosubmit aria-label="Status"><option value="">Any status</option><option value="overdue" {{ "selected" if status == "overdue" }}>Overdue</option>{% for v, l in statuses %}<option value="{{ v }}" {{ "selected" if status == v }}>{{ l }}</option>{% endfor %}</select>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Invoice</th><th>Organization</th><th>Issued</th><th>Due</th><th class="num">Amount</th><th>Status</th></tr></thead>
+    <tbody>{% for i in page.items %}
+      <tr><td><a class="fw-semibold" href="{{ url_for('admin.billing_invoice', invoice_id=i.id) }}">{{ i.number }}</a><div class="small text-3">{{ i.description }}</div></td>
+        <td><a href="{{ url_for('admin.organization_detail', org_id=i.organization_id) }}" translate="no">{{ i.organization.name }}</a></td>
+        <td class="date">{{ i.created_at|dt("%d %b %Y") }}</td><td class="date {{ 'text-danger fw-semibold' if i.is_overdue }}">{{ i.due_date.strftime("%d %b %Y") }}</td>
+        <td class="num fw-semibold">{{ i.amount|money(i.currency) }}</td>
+        <td><span class="chip {{ {'paid': 'green', 'open': 'red' if i.is_overdue else 'amber', 'void': ''}[i.status] }}">{{ "Overdue" if i.is_overdue else i.status_label }}</span>{% if i.payment_method %}<div class="small text-3">{{ i.payment_method }}</div>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "admin.billing_home") }}
+  {% else %}<div class="empty">{{ icon("receipt") }}<div>No invoices match.</div></div>{% endif %}
+</div>
+{% endblock %}

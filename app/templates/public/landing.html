@@ -1,0 +1,63 @@
+{% extends "layouts/public.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Enterprise project & portfolio management{% endblock %}
+{% block content %}
+<section class="landing-hero">
+  <span class="chip purple eyebrow">{{ icon("sparkles") }} Enterprise Project Management & Portfolio Intelligence</span>
+  <h1>Every project, person and cedi —<br><span class="gradient-text">in one workspace.</span></h1>
+  <p class="lead">Laari ProjectSphere helps NGOs, businesses, government agencies and consultants plan, execute, monitor and evaluate projects from one secure, centralized system.</p>
+  <div class="landing-cta">
+    {% if SIGNUP_OPEN %}<a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') }}">{{ icon("rocket") }} Start your free trial</a>
+    {% else %}<a class="btn btn-primary btn-lg" href="mailto:{{ SALES_EMAIL }}">{{ icon("mail") }} Talk to our team</a>{% endif %}
+    <a class="btn btn-soft btn-lg" href="#pricing">{{ icon("tag") }} See pricing</a>
+  </div>
+</section>
+
+<section class="section">
+  <div class="row g-4">
+    {% for ic, color, title, text in [
+      ("layout-dashboard", "", "Executive dashboards", "Live portfolio indicators, delayed projects and budget use — from real data, never placeholders."),
+      ("gantt-chart", "blue", "Planning & scheduling", "Tasks, milestones, dependencies, Gantt charts and work breakdown structures."),
+      ("wallet", "green", "Budgets & finance", "Budgets, expenditure, approvals and variance analysis in multiple currencies."),
+      ("target", "amber", "Monitoring & evaluation", "Results frameworks, indicators, baselines and field monitoring visits."),
+      ("shield-check", "", "Isolated & secure", "Each organization's data is separated at both the application and database level."),
+      ("users", "blue", "Roles for every team", "From Executive Director to Field Officer and read-only Auditor."),
+    ] %}
+    <div class="col-sm-6 col-lg-4">
+      <div class="panel feature">
+        <span class="kpi-icon {{ color }}">{{ icon(ic) }}</span>
+        <h3>{{ title }}</h3>
+        <p>{{ text }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section" id="pricing">
+  <div class="section-title">
+    <h2>Simple plans that grow with you</h2>
+    <p class="text-3 mb-0">Prices in Ghana cedis, billed monthly.{% if SIGNUP_OPEN and PS.trial_days != "0" %} Every plan starts with a {{ PS.trial_days }}-day free trial.{% endif %}</p>
+  </div>
+  <div class="row g-4">
+    {% for plan in plans %}
+    <div class="col-sm-6 col-xl-3">
+      <div class="panel plan-card {{ 'featured' if plan.code == 'professional' }}">
+        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+          <h3 class="h5 mb-0">{{ plan.name }}</h3>
+          {% if plan.code == "professional" %}<span class="chip purple">Most popular</span>{% endif %}
+        </div>
+        <p class="text-3 small mt-1 mb-3">{{ plan.audience }}</p>
+        <div class="price">{% if plan.price_monthly is none %}Custom{% else %}{{ plan.price_monthly|money(plan.currency) }}<small>/month</small>{% endif %}</div>
+        <ul>{% for f in plan.features %}<li>{{ icon("check") }}<span>{{ f }}</span></li>{% endfor %}</ul>
+        {% if plan.price_monthly is none or not SIGNUP_OPEN %}
+        <a class="btn btn-soft" href="mailto:{{ SALES_EMAIL }}">{{ "Talk to sales" if plan.price_monthly is none else "Contact us" }}</a>
+        {% else %}
+        <a class="btn {{ 'btn-primary' if plan.code == 'professional' else 'btn-soft' }}" href="{{ url_for('auth.register', plan=plan.code) }}">Start free trial</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

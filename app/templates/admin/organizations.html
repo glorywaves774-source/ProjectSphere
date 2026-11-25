@@ -1,0 +1,39 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, sub_chip %}
+{% block title %}Organizations{% endblock %}
+{% block page_title %}Organizations{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("building") }} All organizations</h2><p class="panel-sub">{{ page.total }} found</p></div>
+    <a class="btn btn-primary" href="{{ url_for('admin.organization_new') }}">{{ icon("plus") }} New organization</a></div>
+  <form class="search-row mb-3" method="get" role="search">
+    <div class="search-box">{{ icon("search") }}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Search name, email or workspace ID" aria-label="Search organizations"></div>
+    <select class="form-select" name="status" data-autosubmit aria-label="Status">
+      <option value="">Any status</option>
+      {% for v, l in [("trialing","Trial"),("active","Active"),("past_due","Past due"),("cancelled","Cancelled"),("suspended","Suspended")] %}<option value="{{ v }}" {{ "selected" if status == v }}>{{ l }}</option>{% endfor %}
+    </select>
+    <select class="form-select" name="plan" data-autosubmit aria-label="Plan">
+      <option value="">Any plan</option>
+      {% for p in plans %}<option value="{{ p.code }}" {{ "selected" if plan_code == p.code }}>{{ p.name }}</option>{% endfor %}
+    </select>
+    <select class="form-select" name="type" data-autosubmit aria-label="Type">
+      <option value="">Any type</option>
+      {% for v, l in org_types %}<option value="{{ v }}" {{ "selected" if org_type == v }}>{{ l }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-soft" type="submit">Search</button>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Organization</th><th>Type</th><th>Plan</th><th>Status</th><th>Joined</th></tr></thead>
+    <tbody>{% for o in page.items %}
+      <tr><td><a class="fw-semibold" href="{{ url_for('admin.organization_detail', org_id=o.id) }}" translate="no">{{ o.name }}</a><div class="small text-3" translate="no">{{ o.email }}</div></td>
+        <td class="nowrap">{{ o.type_label }}</td>
+        <td class="nowrap">{{ o.subscription.plan.name if o.subscription else "—" }}</td>
+        <td>{{ sub_chip(o.subscription, o) }}</td>
+        <td class="date">{{ o.created_at|dt("%d %b %Y") }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "admin.organizations") }}
+  {% else %}<div class="empty">{{ icon("search-x") }}<div>No organizations match.</div></div>{% endif %}
+</div>
+{% endblock %}

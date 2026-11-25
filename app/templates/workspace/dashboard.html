@@ -1,0 +1,145 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, meter, sub_chip, activity_icon, project_status, project_health, progress_bar, due %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="hero-card mb-4">
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    {{ sub_chip(sub, org) }}
+    {% if sub %}<span class="chip">{{ sub.plan.name }} plan</span>{% endif %}
+    <span class="chip">{{ org.type_label }}</span>
+  </div>
+  <h2>Good to see you, {{ current_user.full_name.split()[0] }}.</h2>
+  <p><span translate="no">{{ org.name }}</span>'s workspace is ready.
+    {% if sub and sub.trial_days_left is not none %}Your free trial has {{ sub.trial_days_left }} day{{ "s" if sub.trial_days_left != 1 }} left.{% endif %}</p>
+  <div class="hero-actions">
+    {% if current_user.can("users.view") %}<a class="btn btn-soft" href="{{ url_for('workspace.team') }}">{{ icon("users") }} View team</a>{% endif %}
+    {% if current_user.can("org.manage") %}<a class="btn btn-soft" href="{{ url_for('workspace.organization') }}">{{ icon("building-2") }} Organization profile</a>{% endif %}
+  </div>
+</div>
+
+{% if proj %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-xl-3"><a class="kpi kpi-link" href="{{ url_for('workspace.projects', status='all') }}">
+    <div class="kpi-label"><span class="kpi-icon">{{ icon("folder-kanban") }}</span>Projects</div>
+    <div class="kpi-value">{{ proj.total }}</div><div class="kpi-foot">{{ proj.open }} open{% if usage[1].limit %} of {{ usage[1].limit }} on your plan{% endif %}</div></a></div>
+  <div class="col-6 col-xl-3"><a class="kpi kpi-link" href="{{ url_for('workspace.projects', status='active') }}">
+    <div class="kpi-label"><span class="kpi-icon blue">{{ icon("activity") }}</span>Active</div>
+    <div class="kpi-value">{{ proj.active }}</div><div class="kpi-foot">{{ proj.avg_progress }}% average progress</div></a></div>
+  <div class="col-6 col-xl-3"><a class="kpi kpi-link" href="{{ url_for('workspace.projects', delayed=1) }}">
+    <div class="kpi-label"><span class="kpi-icon red">{{ icon("alarm-clock") }}</span>Delayed</div>
+    <div class="kpi-value">{{ proj.delayed|length }}</div><div class="kpi-foot">Overdue or off track</div></a></div>
+  <div class="col-6 col-xl-3"><a class="kpi kpi-link" href="{{ url_for('workspace.projects', status='completed') }}">
+    <div class="kpi-label"><span class="kpi-icon green">{{ icon("check-circle-2") }}</span>Completed</div>
+    <div class="kpi-value">{{ proj.completed }}</div><div class="kpi-foot">{% if proj.on_time_rate is not none %}{{ proj.on_time_rate }}% on time{% else %}Closed as completed{% endif %}</div></a></div>
+</div>
+{% endif %}
+
+<div class="row g-4 mb-4">
+  <div class="col-6 col-xl-3"><div class="kpi">
+    <div class="kpi-label"><span class="kpi-icon">{{ icon("users") }}</span>Team members</div>
+    <div class="kpi-value">{{ members }}</div>
+    <div class="kpi-foot">{% if sub and sub.plan.max_users %}of {{ sub.plan.max_users }} on your plan{% else %}No limit on your plan{% endif %}</div>
+  </div></div>
+  <div class="col-6 col-xl-3"><div class="kpi">
+    <div class="kpi-label"><span class="kpi-icon blue">{{ icon("shield-check") }}</span>Roles</div>
+    <div class="kpi-value">{{ roles_total }}</div>
+    <div class="kpi-foot">Ready-made access levels</div>
+  </div></div>
+  <div class="col-6 col-xl-3"><div class="kpi">
+    <div class="kpi-label"><span class="kpi-icon green">{{ icon("credit-card") }}</span>Plan</div>
+    <div class="kpi-value">{{ sub.plan.name if sub else "—" }}</div>
+    <div class="kpi-foot">{% if sub and sub.plan.price_monthly is not none %}{{ sub.plan.price_monthly|money(sub.plan.currency) }} per month{% else %}Custom pricing{% endif %}</div>
+  </div></div>
+  <div class="col-6 col-xl-3"><div class="kpi">
+    <div class="kpi-label"><span class="kpi-icon amber">{{ icon("hourglass") }}</span>Trial</div>
+    <div class="kpi-value">{{ sub.trial_days_left if sub and sub.trial_days_left is not none else "—" }}</div>
+    <div class="kpi-foot">{% if sub and sub.trial_days_left is not none %}days left · ends {{ sub.trial_ends_at|dt("%d %b %Y") }}{% else %}Not on a trial{% endif %}</div>
+  </div></div>
+</div>
+
+{% if news or meetings %}
+<div class="row g-4 mb-4">
+  {% if news %}<div class="{{ 'col-lg-7' if meetings else 'col-12' }}">
+    <div class="panel h-100 mb-0">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("megaphone") }} Announcements</h2><a class="small fw-semibold" href="{{ url_for('workspace.announcements') }}">View all</a></div>
+      <ul class="dash-list">{% for a in news %}
+        <li><span class="activity-dot">{{ icon("pin" if a.pinned else "megaphone") }}</span>
+          <div class="min-w-0"><div class="fw-semibold" translate="no">{{ a.title }}</div><div class="small text-2 prose" translate="no">{{ a.body|truncate(220) }}</div>
+            <div class="small text-3"><span translate="no">{{ a.author.full_name if a.author else "Former user" }}</span> · {{ a.created_at|dt }}</div></div></li>
+      {% endfor %}</ul>
+    </div></div>{% endif %}
+  {% if meetings %}<div class="{{ 'col-lg-5' if news else 'col-12' }}">
+    <div class="panel h-100 mb-0">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("video") }} Upcoming meetings</h2><a class="small fw-semibold" href="{{ url_for('workspace.meetings') }}">View all</a></div>
+      <ul class="dash-list">{% for m in meetings %}{% set local = m.starts_at.astimezone(org_tz) %}
+        <li><div class="date-tile" aria-hidden="true"><span class="mon">{{ local.strftime("%b") }}</span><span class="day">{{ local.day }}</span></div>
+          <div class="min-w-0"><a class="fw-semibold d-block" href="{{ url_for('workspace.meeting', meeting_id=m.id) }}" translate="no">{{ m.title }}</a>
+            <div class="small text-3"><span class="nowrap">{{ local.strftime("%a %H:%M") }}</span> · {{ m.duration_min }} min{% if m.project %} · <span translate="no">{{ m.project.code }}</span>{% endif %}</div></div></li>
+      {% endfor %}</ul>
+    </div></div>{% endif %}
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    {% if proj is not none %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("folder-kanban") }} My projects</h2>
+        <a class="small fw-semibold" href="{{ url_for('workspace.projects', mine=1) }}">View all</a></div>
+      {% if my_projects %}
+      <ul class="activity-list">{% for p in my_projects %}
+        <li><span class="cat-dot lg" data-color="{{ p.category.color if p.category else '#94a3b8' }}"></span>
+          <div class="activity-body flex-fill"><a class="what d-block" href="{{ url_for('workspace.project', project_id=p.id) }}" translate="no">{{ p.name }}</a>
+            <div class="meta d-flex flex-wrap gap-2 align-items-center"><span class="code">{{ p.code }}</span>{{ project_health(p) }}{% if p.end_date %}<span class="nowrap">Due {{ p.end_date.strftime("%d %b %Y") }}</span>{% endif %}</div>
+            <div class="mt-2">{{ progress_bar(p.progress) }}</div></div></li>
+      {% endfor %}</ul>
+      {% else %}<div class="empty">{{ icon("folder-kanban") }}<div>You're not on any open project yet.</div></div>{% endif %}
+    </div>
+    {% endif %}
+    <div class="panel">
+      <div class="panel-head">
+        <div><h2 class="panel-title">{{ icon("list-checks") }} Getting started</h2><p class="panel-sub">{{ checklist_done }} of {{ checklist|length }} steps done</p></div>
+      </div>
+      <div class="meter mb-3"><span data-width="{{ (checklist_done * 100 / checklist|length)|round }}"></span></div>
+      <ul class="checklist">
+        {% for label, done, link in checklist %}
+        <li>
+          <span class="check {{ 'done' if done }}">{{ icon("check") }}</span>
+          <span class="{{ 'done-text' if done }}">{{ label }}</span>
+          {% if link and not done %}<a class="ms-auto small fw-semibold nowrap" href="{{ link }}">Do it</a>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("activity") }} Recent activity</h2>
+        {% if recent %}<a class="small fw-semibold" href="{{ url_for('workspace.activity') }}">View all</a>{% endif %}</div>
+      {% if not current_user.can("audit.view") %}
+        <div class="empty">{{ icon("lock") }}<div>Activity is visible to admins, directors and auditors.</div></div>
+      {% elif recent %}
+      <ul class="activity-list">
+        {% for e in recent %}
+        <li><span class="activity-dot">{{ icon(activity_icon(e.action)) }}</span>
+          <div class="activity-body"><div class="what">{{ e.summary or e.action }}</div>
+          <div class="meta"><span translate="no">{{ e.user.full_name if e.user else "System" }}</span> · <span class="nowrap">{{ e.created_at|dt }}</span></div></div></li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="empty">{{ icon("inbox") }}<div>No activity yet.</div></div>{% endif %}
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("gauge") }} Plan usage</h2><p class="panel-sub">Limits on your {{ sub.plan.name if sub else "" }} plan</p></div></div>
+      {% for u in usage %}{{ meter(u) }}{% endfor %}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("pie-chart") }} Team by role</h2></div>
+      {% if role_chart.labels %}
+      <div class="chart-box sm"><canvas data-chart="doughnut" data-source="role-chart" aria-label="Team members by role" role="img"></canvas></div>
+      <script type="application/json" id="role-chart">{{ role_chart|tojson }}</script>
+      {% else %}<div class="empty">{{ icon("users") }}<div>No roles assigned yet.</div></div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

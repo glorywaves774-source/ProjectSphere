@@ -1,0 +1,36 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, check %}
+{% block title %}{{ "Edit evaluation" if ev else "New evaluation" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.project_me', project_id=project.id) }}">{{ project.code }} M&amp;E</a>{% endblock %}
+{% block page_title %}{{ "Edit evaluation" if ev else "New evaluation" }}{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.title) }}
+    <div class="row g-3">
+      <div class="col-sm-6">{{ field(form.kind) }}</div>
+      <div class="col-sm-6">{{ field(form.status) }}</div>
+      <div class="col-sm-6">{{ field(form.evaluator, hint=form.evaluator.description) }}</div>
+      <div class="col-6 col-sm-3">{{ field(form.start_date) }}</div>
+      <div class="col-6 col-sm-3">{{ field(form.end_date) }}</div>
+    </div>
+    {{ check(form.is_external) }}
+    {{ field(form.scope) }}
+    {{ field(form.findings, hint="Needed before you mark the evaluation completed.") }}
+    {{ field(form.recommendations) }}
+    {{ field(form.management_response, hint=form.management_response.description) }}
+    <h3 class="form-section">Ratings (OECD-DAC criteria)</h3>
+    <div class="row g-3">
+      {% for f in [form.relevance, form.coherence, form.effectiveness, form.efficiency, form.impact, form.sustainability] %}
+      <div class="col-sm-6 col-lg-4">{{ field(f) }}</div>
+      {% endfor %}
+    </div>
+    {{ field(form.report_document_id, hint="Upload the report to the project's Documents first.") }}
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("save") }} Save</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.evaluation', evaluation_id=ev.id) if ev else url_for('workspace.project_me', project_id=project.id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

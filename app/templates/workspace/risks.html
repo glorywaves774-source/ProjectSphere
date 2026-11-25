@@ -1,0 +1,69 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, risk_level, issue_priority, issue_status, heatmap %}
+{% block title %}Risks{% if project %} · {{ project.name }}{% endif %}{% endblock %}
+{% block crumb %}{% if project %}<a href="{{ url_for('workspace.projects') }}">Projects</a> · {{ project.code }}{% else %}{{ super() }}{% endif %}{% endblock %}
+{% block page_title %}{% if project %}<span translate="no">{{ project.name }}</span>{% else %}Risk register{% endif %}{% endblock %}
+{% block content %}
+{% if project %}{% include "partials/project_tabs.html" %}{% endif %}
+{% set base = url_for('workspace.project_risks', project_id=project.id) if project else url_for('workspace.risks') %}
+<div class="row g-4 mb-4">
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon">{{ icon("shield-alert") }}</span>Open risks</div><div class="kpi-value">{{ s.open_risks }}</div><div class="kpi-foot">{{ s.review_overdue }} overdue for review</div></div></div>
+  <div class="col-6 col-lg-3"><a class="kpi kpi-link" href="{{ base }}?level=critical"><div class="kpi-label"><span class="kpi-icon red">{{ icon("flame") }}</span>Critical & high</div><div class="kpi-value">{{ s.levels.critical + s.levels.high }}</div><div class="kpi-foot">{{ s.levels.critical }} critical · {{ s.levels.high }} high</div></a></div>
+  <div class="col-6 col-lg-3"><a class="kpi kpi-link" href="{{ url_for('workspace.issues', project=project.id if project else None) }}"><div class="kpi-label"><span class="kpi-icon amber">{{ icon("circle-alert") }}</span>Open issues</div><div class="kpi-value">{{ s.open_issues }}</div><div class="kpi-foot">{{ s.critical_issues }} high priority</div></a></div>
+  <div class="col-6 col-lg-3"><div class="kpi"><div class="kpi-label"><span class="kpi-icon blue">{{ icon("alarm-clock") }}</span>Issues overdue</div><div class="kpi-value">{{ s.overdue_issues }}</div><div class="kpi-foot">past their resolve-by date</div></div></div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("grid-3x3") }} Heat map</h2><p class="panel-sub">Open risks · tap a square to filter</p></div></div>
+      {{ heatmap(s.heat, base, request.args.get("cell")) }}
+      <div class="heat-legend"><span class="low"></span>Low 1–4<span class="medium"></span>Medium 5–9<span class="high"></span>High 10–15<span class="critical"></span>Critical 16–25</div>
+    </div>
+  </div>
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("list") }} Risks</h2><p class="panel-sub">{{ rows|length }} shown, highest score first</p></div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.risks_xlsx', project=project.id if project else None) }}">{{ icon("file-spreadsheet") }} Excel</a>
+          {% if can_add %}<a class="btn btn-primary btn-sm" href="{{ url_for('workspace.risk_new', project=project.id if project else None) }}">{{ icon("plus") }} Add risk</a>{% endif %}
+        </div></div>
+      <form class="search-row mb-3" method="get">
+        {% if not project %}<select class="form-select" name="project" data-autosubmit aria-label="Project">
+          <option value="">All projects</option>{% for p in projects %}<option value="{{ p.id }}" {{ "selected" if request.args.get("project")|int == p.id }}>{{ p.name }}</option>{% endfor %}
+        </select>{% endif %}
+        <select class="form-select" name="status" data-autosubmit aria-label="Status">
+          {% for v, l in statuses %}<option value="{{ v }}" {{ "selected" if request.args.get("status", "open") == v }}>{{ l }}</option>{% endfor %}<option value="all" {{ "selected" if request.args.get("status") == "all" }}>Any status</option>
+        </select>
+        <select class="form-select" name="category" data-autosubmit aria-label="Category">
+          <option value="">Any category</option>{% for v, l in categories %}<option value="{{ v }}" {{ "selected" if request.args.get("category") == v }}>{{ l }}</option>{% endfor %}
+        </select>
+        <label class="form-check chip-toggle"><input class="form-check-input" type="checkbox" name="mine" value="1" data-autosubmit {{ "checked" if request.args.get("mine") == "1" }}> I own</label>
+        {% if request.args.get("cell") or request.args.get("level") %}<a class="btn btn-soft" href="{{ base }}">{{ icon("x") }} Clear</a>{% endif %}
+      </form>
+      {% if rows %}
+      <ul class="risk-list">{% for r in rows %}
+        <li class="level-{{ r.level }}"><span class="risk-score" aria-hidden="true">{{ r.score }}</span>
+          <div class="min-w-0 flex-fill"><a class="fw-semibold d-block" href="{{ url_for('workspace.risk', risk_id=r.id) }}"><span class="code">{{ r.code }}</span> <span translate="no">{{ r.title }}</span></a>
+            <div class="small text-3">{% if not project %}<span class="code">{{ r.project.code }}</span> · {% endif %}{{ r.category_label }} · {{ r.response_label }}{% if r.owner %} · <span translate="no">{{ r.owner.full_name }}</span>{% endif %}
+              {% if r.review_overdue %} · <span class="text-danger">review overdue</span>{% elif r.review_date %} · review {{ r.review_date.strftime("%d %b") }}{% endif %}</div></div>
+          <div class="text-end">{{ risk_level(r) }}{% if r.status != "open" %}<div class="small text-3 mt-1">{{ r.status_label }}</div>{% endif %}</div></li>
+      {% endfor %}</ul>
+      {% else %}<div class="empty">{{ icon("shield-check") }}<div>No risks match.</div></div>{% endif %}
+    </div>
+
+    {% if project %}
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("circle-alert") }} Issues</h2><p class="panel-sub">Problems happening now</p></div>
+        <div class="d-flex gap-2">{% if request.args.get("issues") != "all" %}<a class="small fw-semibold align-self-center" href="{{ base }}?issues=all">Show resolved</a>{% endif %}
+        {% if can_raise %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.issue_new', project=project.id) }}">{{ icon("plus") }} Log issue</a>{% endif %}</div></div>
+      {% if issues %}<ul class="dash-list">{% for i in issues %}
+        <li><span class="activity-dot">{{ icon("circle-alert") }}</span><div class="min-w-0 flex-fill"><a class="fw-semibold d-block" href="{{ url_for('workspace.issue', issue_id=i.id) }}"><span class="code">{{ i.code }}</span> <span translate="no">{{ i.title }}</span></a>
+          <div class="small text-3">{% if i.assignee %}<span translate="no">{{ i.assignee.full_name }}</span>{% else %}Unassigned{% endif %}{% if i.due_date %} · {{ "overdue since" if i.is_overdue else "by" }} {{ i.due_date.strftime("%d %b") }}{% endif %}{% if i.risk %} · from {{ i.risk.code }}{% endif %}</div>
+          <div class="d-flex gap-1 mt-1">{{ issue_priority(i) }}{{ issue_status(i) }}</div></div></li>
+      {% endfor %}</ul>{% else %}<div class="empty">{{ icon("circle-check") }}<div>No open issues.</div></div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

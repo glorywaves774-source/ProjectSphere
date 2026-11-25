@@ -1,0 +1,15 @@
+{% from "partials/macros.html" import icon %}
+<div class="panel-head project-head">
+  <div class="segmented" role="tablist" aria-label="View">
+    {% set args = request.args.to_dict() %}
+    {% set _ = args.pop("page", None) %}
+    {% set _ = args.update(view="list") %}<a href="{{ url_for('workspace.projects', **args) }}" {% if view == 'list' %}aria-current="page"{% endif %}>{{ icon("list") }} List</a>
+    {% set _ = args.update(view="board") %}<a href="{{ url_for('workspace.projects', **args) }}" {% if view == 'board' %}aria-current="page"{% endif %}>{{ icon("kanban") }} Board</a>
+  </div>
+  <div class="d-flex gap-2 head-actions">
+    {% set args = request.args.to_dict() %}{% set _ = args.pop("view", None) %}{% set _ = args.pop("page", None) %}
+    <a class="btn btn-soft" href="{{ url_for('workspace.projects_export', **args) }}" title="Export CSV" aria-label="Export CSV">{{ icon("download") }}<span class="label-wide"> Export CSV</span></a>
+    <a class="btn btn-soft" href="{{ url_for('workspace.project_categories') }}" title="Categories" aria-label="Categories">{{ icon("tags") }}<span class="label-wide"> Categories</span></a>
+    {% if can_create %}<a class="btn btn-primary" href="{{ url_for('workspace.project_new') }}">{{ icon("plus") }} New<span class="label-wide"> project</span></a>{% endif %}
+  </div>
+</div>

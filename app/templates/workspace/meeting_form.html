@@ -1,0 +1,28 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, people_checks %}
+{% block title %}{{ "Edit meeting" if m else "Schedule a meeting" }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.meetings') }}">Meetings</a>{% endblock %}
+{% block page_title %}{{ "Edit meeting" if m else "Schedule a meeting" }}{% endblock %}
+{% block content %}
+<div class="panel narrow-panel">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.title) }}
+    <div class="row g-3">
+      <div class="col-sm-5">{{ field(form.day) }}</div>
+      <div class="col-sm-4 col-7">{{ field(form.time) }}</div>
+      <div class="col-sm-3 col-5">{{ field(form.duration_min) }}</div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-7">{{ field(form.location, hint=form.location.description) }}</div>
+      <div class="col-md-5">{{ field(form.project_id) }}</div>
+    </div>
+    {{ people_checks(form.attendees, hint="Choosing a project first fills in its team. Everyone invited gets a notification.") }}
+    {{ field(form.agenda) }}
+    <div class="form-actions mt-0">
+      <button class="btn btn-primary" type="submit">{{ icon("calendar-check") }} {{ "Save changes" if m else "Schedule" }}</button>
+      <a class="btn btn-soft" href="{{ url_for('workspace.meeting', meeting_id=m.id) if m else url_for('workspace.meetings') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

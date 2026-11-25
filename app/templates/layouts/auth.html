@@ -1,0 +1,25 @@
+{% extends "layouts/base.html" %}
+{% from "partials/macros.html" import icon, theme_button, flashes, brand %}
+{% block body_class %}auth no-tabs{% endblock %}
+{% block body %}
+<div class="auth-wrap">
+  <section class="auth-aside" aria-hidden="true">
+    {{ brand("/") }}
+    <div>
+      <h2>Plan. Execute.<br>Monitor. Deliver.</h2>
+      <p>One secure workspace for your projects, people, budgets and results — built for NGOs, businesses, government and consultants.</p>
+      <ul class="auth-points">
+        <li>{{ icon("shield-check") }} Your organization's data is isolated from every other workspace</li>
+        <li>{{ icon("users") }} Eleven ready-made roles with precise permissions</li>
+        <li>{{ icon("line-chart") }} Real-time dashboards from your live data</li>
+      </ul>
+    </div>
+    <div class="small text-3">{{ COMPANY_NAME }}</div>
+  </section>
+  <section class="auth-main">
+    <div class="tools">{{ theme_button() }}</div>
+    <div class="auth-card-wrap" id="main">{% block content %}{% endblock %}</div>
+  </section>
+</div>
+{{ flashes() }}
+{% endblock %}

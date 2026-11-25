@@ -1,0 +1,35 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, pager, visit_status, visit_rating %}
+{% block title %}Field visits{% endblock %}
+{% block page_title %}Field monitoring visits{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head"><div><h2 class="panel-title">{{ icon("map-pin") }} Monitoring visits</h2><p class="panel-sub">{{ page.total }} visit{{ "s" if page.total != 1 }}</p></div>
+    {% if can_add %}<a class="btn btn-primary" href="{{ url_for('workspace.visit_new', project=request.args.get('project')) }}">{{ icon("plus") }} Record a visit</a>{% endif %}</div>
+  <form class="search-row mb-3" method="get">
+    <select class="form-select" name="project" data-autosubmit aria-label="Project">
+      <option value="">All projects</option>
+      {% for p in projects %}<option value="{{ p.id }}" {{ "selected" if request.args.get("project")|int == p.id }}>{{ p.name }}</option>{% endfor %}
+    </select>
+    <select class="form-select" name="status" data-autosubmit aria-label="Status">
+      <option value="">Any status</option>
+      {% for v, l in statuses %}<option value="{{ v }}" {{ "selected" if request.args.get("status") == v }}>{{ l }}</option>{% endfor %}
+    </select>
+    <label class="form-check chip-toggle"><input class="form-check-input" type="checkbox" name="mine" value="1" data-autosubmit {{ "checked" if request.args.get("mine") == "1" }}> My visits</label>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap"><table class="table-ps">
+    <thead><tr><th>Visit</th><th>Date</th><th>Project</th><th>Assessment</th><th>Status</th><th>By</th></tr></thead>
+    <tbody>{% for v in page.items %}
+      <tr><td class="cell-project"><a class="fw-semibold d-block" href="{{ url_for('workspace.visit', visit_id=v.id) }}" translate="no">{{ v.location }}</a>
+          <div class="small text-3"><span class="code">{{ v.reference }}</span>{% if v.has_gps %} · {{ icon("locate-fixed") }} GPS{% endif %}{% if v.photos %} · {{ icon("image") }} {{ v.photos|length }}{% endif %}</div></td>
+        <td class="date">{{ v.visit_date.strftime("%d %b %Y") }}</td>
+        <td class="nowrap"><span class="code">{{ v.project.code }}</span></td>
+        <td>{{ visit_rating(v) }}</td><td>{{ visit_status(v) }}</td>
+        <td class="nowrap" translate="no">{{ v.visited_by.full_name if v.visited_by else "—" }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {{ pager(page, "workspace.visits") }}
+  {% else %}<div class="empty">{{ icon("map-pin") }}<div>No visits match.</div></div>{% endif %}
+</div>
+{% endblock %}

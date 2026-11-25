@@ -1,0 +1,46 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon %}
+{% block title %}Calendar{% endblock %}
+{% block page_title %}Calendar{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="panel-head">
+    <div class="d-flex align-items-center gap-2 cal-nav">
+      <a class="icon-btn" href="{{ url_for('workspace.calendar_view', month=prev_m.strftime('%Y-%m'), project=project_id or '', mine=1 if mine else '') }}" aria-label="Previous month">{{ icon("chevron-left") }}</a>
+      <h2 class="panel-title cal-title">{{ first.strftime("%B %Y") }}</h2>
+      <a class="icon-btn" href="{{ url_for('workspace.calendar_view', month=next_m.strftime('%Y-%m'), project=project_id or '', mine=1 if mine else '') }}" aria-label="Next month">{{ icon("chevron-right") }}</a>
+      <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.calendar_view', project=project_id or '', mine=1 if mine else '') }}">Today</a>
+    </div>
+    <form class="search-row" method="get">
+      <input type="hidden" name="month" value="{{ first.strftime('%Y-%m') }}">
+      <select class="form-select" name="project" data-autosubmit aria-label="Project">
+        <option value="">All projects</option>
+        {% for p in projects %}<option value="{{ p.id }}" {{ "selected" if project_id == p.id }}>{{ p.name }}</option>{% endfor %}
+      </select>
+      <label class="form-check chip-toggle"><input class="form-check-input" type="checkbox" name="mine" value="1" data-autosubmit {{ "checked" if mine }}> Only my tasks</label>
+    </form>
+  </div>
+  <div class="cal-legend"><span><i class="ev task"></i> Task due</span><span><i class="ev milestone"></i> Milestone</span><span><i class="ev project"></i> Project end</span><span><i class="ev meeting"></i> Meeting</span><span><i class="ev overdue"></i> Overdue</span></div>
+  <div class="cal-grid" role="grid" aria-label="{{ first.strftime('%B %Y') }}">
+    {% for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] %}<div class="cal-dow" role="columnheader">{{ d }}</div>{% endfor %}
+    {% for week in weeks %}{% for day in week %}
+    <div class="cal-day {{ 'other' if day.month != first.month }} {{ 'today' if day == today }}" role="gridcell">
+      <div class="cal-num">{{ day.day }}</div>
+      {% for e in events.get(day, [])[:4] %}
+      {% set href = e.href if e.href is defined else (url_for('workspace.task', task_id=e.task.id) if e.task is defined else url_for('workspace.project', project_id=e.project.id)) %}
+      <a class="ev {{ e.kind }} {{ 'done' if e.done }} {{ 'overdue' if e.overdue }}" href="{{ href }}" title="{{ e.title }}" translate="no">{{ e.title }}</a>
+      {% endfor %}
+      {% if events.get(day, [])|length > 4 %}<div class="ev more">+{{ events[day]|length - 4 }} more</div>{% endif %}
+    </div>
+    {% endfor %}{% endfor %}
+  </div>
+</div>
+<div class="panel cal-agenda">
+  <div class="panel-head"><h2 class="panel-title">{{ icon("list") }} This month</h2></div>
+  {% if agenda %}<ul class="activity-list">{% for d, e in agenda %}
+    {% set href = e.href if e.href is defined else (url_for('workspace.task', task_id=e.task.id) if e.task is defined else url_for('workspace.project', project_id=e.project.id)) %}
+    <li><span class="agenda-date"><b>{{ d.day }}</b>{{ d.strftime("%a") }}</span><div class="activity-body"><a class="what d-block" href="{{ href }}" translate="no">{{ "◆ " if e.kind == "milestone" }}{{ e.title }}</a>
+      <div class="meta">{{ {"task": "Task due", "milestone": "Milestone", "project": "Project end", "meeting": "Meeting"}[e.kind] }}{% if e.task is defined %} · <span translate="no">{{ e.task.project.name }}</span>{% endif %}{% if e.done %} · done{% elif e.overdue %} · <span class="text-danger">overdue</span>{% endif %}</div></div></li>
+  {% endfor %}</ul>{% else %}<div class="empty">Nothing scheduled this month.</div>{% endif %}
+</div>
+{% endblock %}

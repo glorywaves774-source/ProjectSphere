@@ -1,0 +1,81 @@
+{% extends "layouts/app.html" %}
+{% from "partials/macros.html" import icon, field, visit_status, visit_rating, doc_icon %}
+{% block title %}{{ v.reference }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('workspace.visits') }}">Field visits</a> · {{ v.reference }}{% endblock %}
+{% block page_title %}<span translate="no">{{ v.location }}</span>{% endblock %}
+{% block content %}
+{% if v.status == "draft" and v.review_note %}<div class="announce warning">{{ icon("undo-2") }}<span>Returned for changes: <span translate="no">{{ v.review_note }}</span></span></div>{% endif %}
+{% if can_review %}<div class="announce warning">{{ icon("hourglass") }}<span>This visit is waiting for your review.</span></div>{% endif %}
+<div class="row g-4">
+  <div class="col-xl-8">
+    <div class="panel">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        {{ visit_status(v) }}{{ visit_rating(v) }}
+        <div class="ms-auto d-flex gap-2 flex-wrap">
+          <a class="btn btn-soft btn-sm" href="{{ url_for('workspace.visit_pdf', visit_id=v.id) }}">{{ icon("file-text") }} PDF</a>
+          {% if can_edit %}<a class="btn btn-soft btn-sm" href="{{ url_for('workspace.visit_edit', visit_id=v.id) }}">{{ icon("pencil") }} Edit</a>
+          <form method="post" data-confirm="Tap again to delete"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><button class="btn btn-danger-soft btn-sm" type="submit">{{ icon("trash-2") }}<span class="label-wide"> Delete</span></button></form>{% endif %}
+        </div>
+      </div>
+      {% for label, text in [("Purpose", v.purpose), ("People met", v.people_met), ("Findings", v.findings), ("Recommendations and follow-up", v.recommendations)] %}
+        {% if text %}<h3 class="dep-head mt-3">{{ label }}</h3><div class="prose" translate="no">{{ text }}</div>{% endif %}
+      {% endfor %}
+      {% if not v.findings %}<p class="text-3 mt-3 mb-0">No findings written yet.</p>{% endif %}
+      {% if can_edit %}
+      <form method="post" class="mt-3"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="submit">
+        <button class="btn btn-primary" type="submit">{{ icon("send") }} Submit for review</button></form>
+      {% endif %}
+    </div>
+
+    {% if can_review %}
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("badge-check") }} Review</h2></div>
+      <form method="post" novalidate>
+        {{ rform.hidden_tag() }}
+        {{ field(rform.note, placeholder="Optional when accepting; say what to change when returning") }}
+        <div class="form-actions mt-0">
+          <button class="btn btn-primary" type="submit" name="action" value="accept">{{ icon("thumbs-up") }} Accept</button>
+          <button class="btn btn-soft" type="submit" name="action" value="return">{{ icon("undo-2") }} Return</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+
+    <div class="panel">
+      <div class="panel-head"><div><h2 class="panel-title">{{ icon("image") }} Photos and attachments</h2><p class="panel-sub">Kept in the project's document library</p></div></div>
+      {% if v.photos %}<ul class="doc-list">{% for d in v.photos %}{% set cur = d.current %}
+        <li><span class="doc-icon ext-{{ cur.extension if cur else 'none' }}">{{ doc_icon(cur.extension if cur else "") }}</span>
+          <div class="doc-body"><a class="fw-semibold d-block name" href="{{ url_for('workspace.document', doc_id=d.id) }}" translate="no">{{ d.title }}</a>
+            {% if cur %}<div class="small text-3">{{ cur.extension|upper }} · {{ cur.size_bytes|filesize }}</div>{% endif %}</div>
+          {% if cur %}<a class="icon-btn sm" href="{{ url_for('workspace.document_download', doc_id=d.id, version_id=cur.id) }}" aria-label="Download {{ d.title }}">{{ icon("download") }}</a>{% endif %}</li>
+      {% endfor %}</ul>{% else %}<p class="text-3">No attachments.</p>{% endif %}
+      {% if can_edit %}
+      <form method="post" enctype="multipart/form-data" class="mt-3" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="attach">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-6"><label class="form-label" for="photo">Photo or scan</label><input class="form-control" type="file" id="photo" name="photo" accept="image/jpeg,image/png,application/pdf" capture="environment" required></div>
+          <div class="col-md-6"><label class="form-label" for="caption">Caption</label><input class="form-control" type="text" id="caption" name="caption" maxlength="200" placeholder="e.g. New borehole, Ahenkro"></div>
+        </div>
+        <button class="btn btn-soft mt-3" type="submit">{{ icon("upload") }} Attach</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">{{ icon("info") }} Details</h2></div>
+      <dl class="dl-grid one-col">
+        <div><dt>Reference</dt><dd class="code">{{ v.reference }}</dd></div>
+        <div><dt>Project</dt><dd><a href="{{ url_for('workspace.project_me', project_id=v.project_id) }}" translate="no">{{ v.project.name }}</a></dd></div>
+        <div><dt>Date</dt><dd>{{ v.visit_date.strftime("%A %d %B %Y") }}</dd></div>
+        <div><dt>GPS</dt><dd>{% if v.has_gps %}<span class="code">{{ v.latitude }}, {{ v.longitude }}</span>
+          <div><a class="small" href="https://www.openstreetmap.org/?mlat={{ v.latitude }}&amp;mlon={{ v.longitude }}#map=15/{{ v.latitude }}/{{ v.longitude }}" target="_blank" rel="noopener noreferrer">{{ icon("map") }} Open map</a></div>{% else %}Not recorded{% endif %}</dd></div>
+        <div><dt>Visited by</dt><dd translate="no">{{ v.visited_by.full_name if v.visited_by else "Former user" }}</dd></div>
+        {% if v.submitted_at %}<div><dt>Submitted</dt><dd>{{ v.submitted_at|dt }}</dd></div>{% endif %}
+        {% if v.reviewed_by %}<div><dt>Reviewed</dt><dd><span translate="no">{{ v.reviewed_by.full_name }}</span>, {{ v.reviewed_at|dt }}{% if v.review_note and v.status == "reviewed" %}<div class="small text-3" translate="no">{{ v.review_note }}</div>{% endif %}</dd></div>{% endif %}
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}
